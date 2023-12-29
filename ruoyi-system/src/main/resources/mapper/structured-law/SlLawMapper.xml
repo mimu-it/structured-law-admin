@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.SlLawMapper">
+    
+    <resultMap type="SlLaw" id="SlLawResult">
+        <result property="id"    column="id"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="categoryId"    column="category_id"    />
+        <result property="name"    column="name"    />
+        <result property="lawType"    column="law_type"    />
+        <result property="authority"    column="authority"    />
+        <result property="publish"    column="publish"    />
+        <result property="status"    column="status"    />
+        <result property="lawOrder"    column="law_order"    />
+        <result property="subtitle"    column="subtitle"    />
+        <result property="validFrom"    column="valid_from"    />
+        <result property="ver"    column="ver"    />
+        <result property="tags"    column="tags"    />
+        <result property="preface"    column="preface"    />
+    </resultMap>
+
+    <sql id="selectSlLawVo">
+        select id, create_time, create_by, update_time, update_by, category_id, name, law_type, authority, publish, status, law_order, subtitle, valid_from, ver, tags, preface from sl_law
+    </sql>
+
+    <select id="selectSlLawListForSearch" resultMap="SlLawResult">
+        <include refid="selectSlLawVo"/>
+        <where>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="categoryId != null"> and category_id = #{categoryId}</if>
+            <if test="publish != null and publish.length > 1">
+                <![CDATA[
+                and (publish >= #{publish.[0]} and publish <= #{publish.[1]})
+                ]]>
+            </if>
+
+            <if test="validFrom != null and validFrom.length > 1">
+                <![CDATA[
+                and (valid_from >= #{validFrom.[0]} and valid_from <= #{validFrom.[1]})
+                ]]>
+            </if>
+        </where>
+    </select>
+
+    <select id="selectSlLawList" parameterType="SlLaw" resultMap="SlLawResult">
+        <include refid="selectSlLawVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="categoryId != null"> and category_id = #{categoryId}</if>
+            <if test="lawType != null  and lawType != ''"> and law_type = #{lawType}</if>
+            <if test="authority != null  and authority != ''"> and authority = #{authority}</if>
+            <if test="publish != null "> and publish = #{publish}</if>
+            <if test="status != null "> and status = #{status}</if>
+            <if test="subtitle != null  and subtitle != ''"> and subtitle = #{subtitle}</if>
+            <if test="validFrom != null "> and valid_from = #{validFrom}</if>
+        </where>
+    </select>
+    
+    <select id="selectSlLawById" parameterType="Long" resultMap="SlLawResult">
+        <include refid="selectSlLawVo"/>
+        where id = #{id}
+    </select>
+
+
+    <sql id="select_optional_field">
+        select
+        <foreach item="column" collection="columns"  separator=",">
+            ${column}
+        </foreach>
+        from sl_law
+    </sql>
+
+
+    <select id="getById" parameterType="Long" resultMap="SlLawResult">
+        <include refid="select_optional_field"/>
+        where id = #{id}
+    </select>
+        
+    <insert id="insertSlLaw" parameterType="SlLaw" useGeneratedKeys="true" keyProperty="id">
+        insert into sl_law
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="createTime != null">create_time,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="categoryId != null">category_id,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="lawType != null and lawType != ''">law_type,</if>
+            <if test="authority != null">authority,</if>
+            <if test="publish != null">publish,</if>
+            <if test="status != null">status,</if>
+            <if test="lawOrder != null">law_order,</if>
+            <if test="subtitle != null">subtitle,</if>
+            <if test="validFrom != null">valid_from,</if>
+            <if test="ver != null">ver,</if>
+            <if test="tags != null">tags,</if>
+            <if test="preface != null">preface,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="createTime != null">#{createTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="categoryId != null">#{categoryId},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="lawType != null and lawType != ''">#{lawType},</if>
+            <if test="authority != null">#{authority},</if>
+            <if test="publish != null">#{publish},</if>
+            <if test="status != null">#{status},</if>
+            <if test="lawOrder != null">#{lawOrder},</if>
+            <if test="subtitle != null">#{subtitle},</if>
+            <if test="validFrom != null">#{validFrom},</if>
+            <if test="ver != null">#{ver},</if>
+            <if test="tags != null">#{tags},</if>
+            <if test="preface != null">#{preface},</if>
+         </trim>
+    </insert>
+
+    <update id="updateSlLaw" parameterType="SlLaw">
+        update sl_law
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="lawType != null and lawType != ''">law_type = #{lawType},</if>
+            <if test="authority != null">authority = #{authority},</if>
+            <if test="publish != null">publish = #{publish},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="lawOrder != null">law_order = #{lawOrder},</if>
+            <if test="subtitle != null">subtitle = #{subtitle},</if>
+            <if test="validFrom != null">valid_from = #{validFrom},</if>
+            <if test="ver != null">ver = #{ver},</if>
+            <if test="tags != null">tags = #{tags},</if>
+            <if test="preface != null">preface = #{preface},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteSlLawById" parameterType="Long">
+        delete from sl_law where id = #{id}
+    </delete>
+
+    <delete id="deleteSlLawByIds" parameterType="String">
+        delete from sl_law where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

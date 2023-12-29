@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.SlLawProvisionMapper">
+    
+    <resultMap type="SlLawProvision" id="SlLawProvisionResult">
+        <result property="id"    column="id"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="lawId"    column="law_id"    />
+        <result property="title"    column="title"    />
+        <result property="titleNumber"    column="title_number"    />
+        <result property="termText"    column="term_text"    />
+    </resultMap>
+
+    <sql id="selectSlLawProvisionVo">
+        select id, create_time, create_by, update_time, update_by, law_id, title, title_number, term_text from sl_law_provision
+    </sql>
+
+    <select id="selectSlLawProvisionList" parameterType="SlLawProvision" resultMap="SlLawProvisionResult">
+        <include refid="selectSlLawProvisionVo"/>
+        <where>  
+            <if test="lawId != null "> and law_id = #{lawId}</if>
+            <if test="title != null  and title != ''"> and title = #{title}</if>
+            <if test="titleNumber != null  and titleNumber != ''"> and title_number = #{titleNumber}</if>
+        </where>
+    </select>
+    
+    <select id="selectSlLawProvisionById" parameterType="Long" resultMap="SlLawProvisionResult">
+        <include refid="selectSlLawProvisionVo"/>
+        where id = #{id}
+    </select>
+        
+    <insert id="insertSlLawProvision" parameterType="SlLawProvision" useGeneratedKeys="true" keyProperty="id">
+        insert into sl_law_provision
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="createTime != null">create_time,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="lawId != null">law_id,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="titleNumber != null  and titleNumber != ''">title_number,</if>
+            <if test="termText != null and termText != ''">term_text,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="createTime != null">#{createTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="lawId != null">#{lawId},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="titleNumber != null  and titleNumber != ''">#{titleNumber},</if>
+            <if test="termText != null and termText != ''">#{termText},</if>
+         </trim>
+    </insert>
+
+    <update id="updateSlLawProvision" parameterType="SlLawProvision">
+        update sl_law_provision
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="lawId != null">law_id = #{lawId},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="titleNumber != null  and titleNumber != ''">title_number = #{titleNumber},</if>
+            <if test="termText != null and termText != ''">term_text = #{termText},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteSlLawProvisionById" parameterType="Long">
+        delete from sl_law_provision where id = #{id}
+    </delete>
+
+    <delete id="deleteSlLawProvisionByIds" parameterType="String">
+        delete from sl_law_provision where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

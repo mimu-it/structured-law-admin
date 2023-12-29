@@ -1,0 +1,47 @@
+{
+	"info": {
+		"_postman_id": "6a69559b-6ac1-4a1e-9c96-5cab7f6ebb00",
+		"name": "test_elasticsearch",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "termText-search",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "termText-and-title-search",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/structured-law/portal/search?pageNum=1&condition={termText: \"法人\", title: \"第五十五条\"}",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"structured-law",
+						"portal",
+						"search"
+					],
+					"query": [
+						{
+							"key": "pageNum",
+							"value": "1"
+						},
+						{
+							"key": "condition",
+							"value": "{termText: \"法人\", title: \"第五十五条\"}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

@@ -1,0 +1,61 @@
+{
+  "settings": {
+    "number_of_replicas": 1,
+    "number_of_shards": 1
+  },
+  "mappings": {
+    "properties": {
+      "provisionId": {
+        "type": "long"
+      },
+      "lawId": {
+        "type": "long"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "titleNumber": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "termText": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "lawName": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "authority": {
+        "type": "keyword"
+      },
+      "publish": {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+      },
+      "status": {
+        "type": "text"
+      },
+      "subtitle": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "validFrom": {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+      },
+      "tags": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "lawType": {
+        "type": "keyword"
+      },
+      "preface": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      }
+    }
+  }
+}
