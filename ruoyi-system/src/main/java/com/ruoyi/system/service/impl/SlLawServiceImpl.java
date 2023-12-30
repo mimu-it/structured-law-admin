@@ -21,6 +21,17 @@ public class SlLawServiceImpl implements ISlLawService
     @Autowired
     private SlLawMapper slLawMapper;
 
+
+    @Override
+    public List<String> listAuthority() {
+        return slLawMapper.listAuthority();
+    }
+
+    @Override
+    public List<Integer> listStatus() {
+        return slLawMapper.listStatus();
+    }
+
     /**
      * 查询法律信息
      * 

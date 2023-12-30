@@ -356,13 +356,32 @@ export default {
     },
     /** 建立 elasticsearch 索引 */
     buildIndex() {
-      buildElasticSearchIndex().then(response => {});
+      buildElasticSearchIndex().then(response => {
+        this.$alert('索引建立正在异步进行...', '提示', {
+          confirmButtonText: '确定',
+          callback: action => {}
+        });
+      });
     },
     deleteIndex() {
-      deleteElasticSearchIndex().then(response => {});
+      deleteElasticSearchIndex().then(response => {
+        this.$alert('索引删除成功', '提示', {
+          confirmButtonText: '确定',
+          type: 'success',
+          callback: action => {}
+        });
+      }).catch((err) => {
+        console.error(err);
+      });
     },
     backup() {
-      backup().then(response => {});
+      backup().then(response => {
+        this.$alert('备份成功', '提示', {
+          confirmButtonText: '确定',
+          type: 'success',
+          callback: action => {}
+        });
+      });
     },
     sync() {
       this.$router.push('/law-mgr/sync');

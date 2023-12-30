@@ -24,6 +24,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="preface"    column="preface"    />
     </resultMap>
 
+
+    <select id="listAuthority" resultType="string">
+        select distinct authority from sl_law
+    </select>
+
+    <select id="listStatus" resultType="integer">
+        select distinct status from sl_law
+    </select>
+
     <sql id="selectSlLawVo">
         select id, create_time, create_by, update_time, update_by, category_id, name, law_type, authority, publish, status, law_order, subtitle, valid_from, ver, tags, preface from sl_law
     </sql>

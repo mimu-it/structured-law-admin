@@ -13,6 +13,20 @@ import java.util.List;
  */
 public interface SlLawMapper 
 {
+
+
+    /**
+     * 获取制定机关选项
+     * @return
+     */
+    List<String> listAuthority();
+
+    /**
+     * 获取状态选项
+     * @return
+     */
+    List<Integer> listStatus();
+
     /**
      * 查询法律信息
      * 

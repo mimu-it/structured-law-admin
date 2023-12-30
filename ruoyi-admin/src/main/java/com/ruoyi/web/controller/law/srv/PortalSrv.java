@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -48,7 +47,8 @@ public class PortalSrv {
      */
     @PostConstruct
     public void init() {
-        loadConditionOptions();
+        this.clearConditionOptionsCache();
+        this.loadConditionOptions();
     }
 
     /**
@@ -131,15 +131,21 @@ public class PortalSrv {
      */
     private void loadConditionOptions() {
         List<String> lawTypeOptions = slLawCategoryService.listLawType();
-        SpringUtils.getBean(RedisCache.class).setCacheObject(getCacheKey(SlLaw.LAW_TYPE), lawTypeOptions);
+        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.LAW_TYPE), lawTypeOptions);
 
-        //TODO 还有其他的
+        List<String> authorityOptions = slLawService.listAuthority();
+        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.AUTHORITY), authorityOptions);
+
+        List<Integer> statusOptions = slLawService.listStatus();
+        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.STATUS), statusOptions);
+
+        //TODO 征集状态是啥
     }
 
     /**
      * 清空结构化法条所使用的查询条件选项缓存
      */
-    public static void clearConditionOptionsCache() {
+    public void clearConditionOptionsCache() {
         Collection<String> keys = SpringUtils.getBean(RedisCache.class).keys(CacheConstants.STRUCTURED_LAW_CONDITION_OPTIONS_KEY + "*");
         SpringUtils.getBean(RedisCache.class).deleteObject(keys);
     }
@@ -150,7 +156,7 @@ public class PortalSrv {
      * @param configKey 参数键
      * @return 缓存键key
      */
-    private static String getCacheKey(String configKey) {
+    public static String getConditionOptionsCacheKey(String configKey) {
         return CacheConstants.STRUCTURED_LAW_CONDITION_OPTIONS_KEY + configKey;
     }
 }

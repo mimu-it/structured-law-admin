@@ -54,7 +54,12 @@
         }, 3000)
       },
       sync() {
-        sync().then(() => {});
+        sync().then(() => {
+          this.$alert('同步过程正在异步进行...', '提示', {
+            confirmButtonText: '确定',
+            callback: action => {}
+          });
+        });
         this.getList();
       },
       progress() {

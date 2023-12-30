@@ -12,6 +12,20 @@ import java.util.List;
  */
 public interface ISlLawService 
 {
+
+    /**
+     * 列举"制定机关"， 实际就是法规类型
+     * @return
+     */
+    List<String> listAuthority();
+
+    /**
+     * 列举状态
+     * @return
+     */
+    List<Integer> listStatus();
+
+
     /**
      * 查询法律信息
      * 
