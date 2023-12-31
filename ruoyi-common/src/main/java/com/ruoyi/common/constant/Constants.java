@@ -172,5 +172,6 @@ public class Constants
 
     public final static String CONDITION = "condition";
     public final static String PAGE_NUM = "pageNum";
-
+    public final static String TEXT = "text";
+    public final static String FIELD = "field";
 }

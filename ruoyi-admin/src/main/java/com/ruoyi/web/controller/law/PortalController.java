@@ -5,6 +5,7 @@ import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.TotalHits;
@@ -19,6 +20,10 @@ import com.ruoyi.web.controller.elasticsearch.domain.IntegralProvision;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchConditionOptions;
 import com.ruoyi.web.controller.law.srv.ElasticSearchSrv;
 import com.ruoyi.web.controller.law.srv.PortalSrv;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +31,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
@@ -83,8 +89,17 @@ public class PortalController extends BaseController {
     @Value("${law.structured.sync.api-port}")
     private String syncLawApiPort;
 
+
+    @PostConstruct
+    public void resetLock() {
+        redisTemplate.delete(LOCK_ID_BUILD_ES_INDEX);
+    }
+
     /**
      * 使用elasticsearch 搜索
+     *
+     * http://localhost:8080/structured-law/portal/search?pageNum=1&&condition={termText:"全国"}
+     *
      * @param pageNum
      * @param condition
      * @return
@@ -103,10 +118,12 @@ public class PortalController extends BaseController {
         List<Hit<IntegralProvision>> list = searchResponse.hits().hits();
         List<IntegralProvision> integralProvisionList = new ArrayList<>(list.size());
         for(Hit<IntegralProvision> hit : list) {
+            Double score = hit.score();
+            System.out.println("score: " + score);
             IntegralProvision provision = hit.source();
 
             Map<String, List<String>> highlightMap =  hit.highlight();
-            //System.out.println(highlightMap);
+
             String termTextKey = StrUtil.toCamelCase(IntegralProvision.TERM_TEXT);
             if(highlightMap.get(termTextKey) != null) {
                 List<String> termTextList = highlightMap.get(termTextKey);
@@ -204,6 +221,47 @@ public class PortalController extends BaseController {
             return error(e.getMessage());
         }
         return success();
+    }
+
+
+    /**
+     * 自动提示
+     * @param text
+     * @return
+     */
+    @GetMapping("/suggest-multi")
+    public AjaxResult suggestMulti(@RequestParam(Constants.TEXT) String text) {
+        if(StrUtil.isBlank(text)) {
+            return success();
+        }
+
+        List<String> suggestions = new ArrayList<>();
+        List<String> authoritySuggest = elasticSearchSrv.suggest(IntegralProvision.AUTHORITY, text);
+        suggestions.addAll(authoritySuggest);
+
+        List<String> lawNameSuggest = elasticSearchSrv.suggest(StrUtil.toCamelCase(IntegralProvision.LAW_NAME), text);
+        for(String suggest : lawNameSuggest) {
+            if(suggestions.contains(suggest)) {
+                continue;
+            }
+            suggestions.add(suggest);
+        }
+
+
+        return success(suggestions);
+    }
+
+    /**
+     * 自动提示
+     * @param text
+     * @return
+     */
+    @GetMapping("/suggest")
+    public AjaxResult suggest(@RequestParam(Constants.FIELD) String field, @RequestParam(Constants.TEXT) String text) {
+        if(StrUtil.isBlank(field) || StrUtil.isBlank(text)) {
+            return success();
+        }
+        return success(elasticSearchSrv.suggest(field, text));
     }
 
 

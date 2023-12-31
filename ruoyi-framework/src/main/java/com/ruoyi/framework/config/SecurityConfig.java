@@ -113,7 +113,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
                 // 对于登录login 注册register 验证码captchaImage 允许匿名访问
                 //TODO /structured-law/portal/search 需要完善token访问
                 .antMatchers("/login", "/register", "/captchaImage",
-                        "/structured-law/portal/search", "/structured-law/portal/conditionsOptions").permitAll()
+                        "/structured-law/portal/search",
+                        "/structured-law/portal/suggest",
+                        "/structured-law/portal/suggest-multi",
+                        "/structured-law/portal/conditionsOptions").permitAll()
                 // 静态资源，可匿名访问
                 .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**").permitAll()
                 .antMatchers("/swagger-ui.html", "/swagger-resources/**", "/webjars/**", "/*/api-docs", "/druid/**").permitAll()

@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.law.srv;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
@@ -11,25 +12,42 @@ import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
+import co.elastic.clients.elasticsearch.core.search.*;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
 import co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
+import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralProvision;
 import jakarta.json.Json;
 import jakarta.json.stream.JsonParser;
 import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
+import org.elasticsearch.search.suggest.SuggestBuilder;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ResourceUtils;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author xiao.hu
@@ -47,6 +65,10 @@ public class ElasticSearchSrv {
 
     /**
      * 定义索引
+     *
+     * PUT /law 接json配置可以生成索引
+     *
+     * 通过 GET law/_mapping 可以查看索引
      */
     public void initIndex() {
         try {
@@ -57,14 +79,15 @@ public class ElasticSearchSrv {
             }
 
             File file = ResourceUtils.getFile("classpath:elasticsearch/index_law_mappings.json");
-            String mappings = FileUtil.readString(file, Charset.defaultCharset());
+            String mappingsStr = new String(Files.readAllBytes(file.toPath()));
             JsonpMapper mapper = client._transport().jsonpMapper();
-            JsonParser parser = Json.createParser(new StringReader(mappings));
+            JsonParser parser = mapper.jsonProvider().createParser(new StringReader(mappingsStr));
 
             CreateIndexRequest createIndexRequest = new CreateIndexRequest.Builder().index(INDEX__LAW)
                     .mappings(TypeMapping._DESERIALIZER.deserialize(parser, mapper)).build();
 
-            client.indices().create(createIndexRequest);
+            CreateIndexResponse response = client.indices().create(createIndexRequest);
+            System.out.println(response.acknowledged());
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
@@ -79,6 +102,51 @@ public class ElasticSearchSrv {
     public boolean deleteIndexOfLaw() throws IOException {
         DeleteIndexResponse deleteIndexResponse = client.indices().delete(f -> f.index(INDEX__LAW));
         return deleteIndexResponse.acknowledged();
+    }
+
+    /**
+     * 自动提示
+     * http://localhost:8080/structured-law/portal/suggest?field=lawName&&text=黄河
+     * @param text
+     * @return
+     */
+    public List<String> suggest(String field, String text) {
+        String suggestionName = "authority-suggest";
+        //定义返回
+        List<String> suggestList = new ArrayList<>();
+
+        Map<String, FieldSuggester> map = new HashMap<>(1);
+        map.put(suggestionName, FieldSuggester.of(fs -> fs
+                .completion(cs -> cs.skipDuplicates(true)
+                        .size(5)
+                        .field(field)
+                )
+        ));
+
+        Suggester suggester = Suggester.of(s -> s
+                .suggesters(map)
+                .text(text)
+        );
+
+        try {
+            SearchResponse<Map> searchResponse = client.search(s -> s
+                            .index(INDEX__LAW).suggest(suggester),
+                    Map.class
+            );
+
+            List<Suggestion<Map>> suggestions = searchResponse.suggest().get(suggestionName);
+
+            for (Suggestion<Map> suggest : suggestions) {
+                List<CompletionSuggestOption<Map>>  items = suggest.completion().options();
+                for(CompletionSuggestOption item : items) {
+                    suggestList.add(item.text());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+
+        return suggestList;
     }
 
 
