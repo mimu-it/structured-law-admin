@@ -77,8 +77,8 @@ spring:
     host: localhost
     # 端口，默认为6379
     port: 6379
-    # 数据库索引
-    database: 0
+    # 数据库索引，选择最后一个，每个独立实例应该配置不同的索引避免冲突
+    database: 15
     # 密码
     password:
     # 连接超时时间

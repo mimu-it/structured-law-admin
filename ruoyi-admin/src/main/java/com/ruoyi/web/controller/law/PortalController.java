@@ -142,7 +142,7 @@ public class PortalController extends BaseController {
     @GetMapping("/conditionsOptions")
     public AjaxResult conditionsOptions() {
         RedisCache redisCache = SpringUtils.getBean(RedisCache.class);
-        List<String> lawTypeOptions = redisCache.getCacheObject(PortalSrv.getConditionOptionsCacheKey(SlLaw.LAW_TYPE));
+        List<String> lawTypeOptions = redisCache.getCacheObject(PortalSrv.getConditionOptionsCacheKey(SlLaw.LAW_LEVEL));
         List<String> authorityOptions = redisCache.getCacheObject(PortalSrv.getConditionOptionsCacheKey(SlLaw.AUTHORITY));
         List<Integer> statusList = redisCache.getCacheObject(PortalSrv.getConditionOptionsCacheKey(SlLaw.STATUS));
         List<String> statusOptions = statusList.stream().map((statusNumber) -> String.valueOf(statusNumber)).collect(Collectors.toList());

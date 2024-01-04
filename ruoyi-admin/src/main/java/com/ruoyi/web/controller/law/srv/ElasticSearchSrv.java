@@ -277,10 +277,10 @@ public class ElasticSearchSrv {
             builder.must(query);
         }
 
-        if(StrUtil.isNotBlank(condition.getLawType())) {
+        if(StrUtil.isNotBlank(condition.getLawLevel())) {
             Query query = MatchQuery.of(m -> m
-                    .field(StrUtil.toCamelCase(IntegralProvision.LAW_TYPE))
-                    .query(FieldValue.of(condition.getLawType()))
+                    .field(StrUtil.toCamelCase(IntegralProvision.LAW_LEVEL))
+                    .query(FieldValue.of(condition.getLawLevel()))
             )._toQuery();
             builder.must(query);
         }

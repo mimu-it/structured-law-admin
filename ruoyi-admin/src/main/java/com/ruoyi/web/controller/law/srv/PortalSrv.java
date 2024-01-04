@@ -81,7 +81,7 @@ public class PortalSrv {
                     law = slLawService.getById(row.getLawId(), new String[]{
                             SlLaw.CATEGORY_ID,
                             SlLaw.NAME,
-                            SlLaw.LAW_TYPE,
+                            SlLaw.LAW_LEVEL,
                             SlLaw.AUTHORITY,
                             SlLaw.PUBLISH,
                             SlLaw.STATUS,
@@ -94,7 +94,7 @@ public class PortalSrv {
                 }
 
                 integralProvision.setLawName(law.getName());
-                integralProvision.setLawType(law.getLawType());
+                integralProvision.setLawLevel(law.getLawLevel());
                 integralProvision.setAuthority(law.getAuthority());
                 integralProvision.setPublish(law.getPublish());
                 integralProvision.setStatus(law.getStatus());
@@ -131,7 +131,7 @@ public class PortalSrv {
      */
     private void loadConditionOptions() {
         List<String> lawTypeOptions = slLawCategoryService.listLawType();
-        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.LAW_TYPE), lawTypeOptions);
+        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.LAW_LEVEL), lawTypeOptions);
 
         List<String> authorityOptions = slLawService.listAuthority();
         SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.AUTHORITY), authorityOptions);

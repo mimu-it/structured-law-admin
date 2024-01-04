@@ -12,9 +12,7 @@
         >开始解析同步</el-button>
       </el-col>
     </el-row>
-    <div>
-      {{progressDetail}}
-    </div>
+    <div class="resp_area" v-html="progressDetail"></div>
   </div>
 </template>
 
@@ -76,3 +74,11 @@
     }
   };
 </script>
+
+<style>
+  .resp_area {
+    border: solid 1px #eee;
+    height: 80vh;
+    border-radius: 8px;
+  }
+</style>

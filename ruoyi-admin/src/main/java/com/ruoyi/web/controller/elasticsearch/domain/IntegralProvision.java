@@ -6,6 +6,7 @@ import java.util.Date;
  * @author xiao.hu
  * @date 2023-12-26
  * @apiNote
+ * 用于保存到 es 的宽表对象
  */
 public class IntegralProvision {
 
@@ -14,12 +15,16 @@ public class IntegralProvision {
     private String folder;
     private String lawName;
     private String subtitle;
-    private String lawType;
+    private String lawLevel;
     private String authority;
+    private String authorityProvince;
+    private String authorityCity;
+    private String authorityDistrict;
     private String tags;
     private Date publish;
     private Integer status;
     private Date validFrom;
+    private String documentNo;
     private String title;
     private String titleNumber;
     private String preface;
@@ -65,12 +70,12 @@ public class IntegralProvision {
         this.subtitle = subtitle;
     }
 
-    public String getLawType() {
-        return lawType;
+    public String getLawLevel() {
+        return lawLevel;
     }
 
-    public void setLawType(String lawType) {
-        this.lawType = lawType;
+    public void setLawLevel(String lawLevel) {
+        this.lawLevel = lawLevel;
     }
 
     public String getTags() {
@@ -145,17 +150,53 @@ public class IntegralProvision {
         this.preface = preface;
     }
 
+    public String getAuthorityProvince() {
+        return authorityProvince;
+    }
+
+    public void setAuthorityProvince(String authorityProvince) {
+        this.authorityProvince = authorityProvince;
+    }
+
+    public String getAuthorityCity() {
+        return authorityCity;
+    }
+
+    public void setAuthorityCity(String authorityCity) {
+        this.authorityCity = authorityCity;
+    }
+
+    public String getAuthorityDistrict() {
+        return authorityDistrict;
+    }
+
+    public void setAuthorityDistrict(String authorityDistrict) {
+        this.authorityDistrict = authorityDistrict;
+    }
+
+    public String getDocumentNo() {
+        return documentNo;
+    }
+
+    public void setDocumentNo(String documentNo) {
+        this.documentNo = documentNo;
+    }
+
     public static final String LAW_ID = "law_id";
     public static final String PROVISION_ID = "provision_id";
     public static final String FOLDER = "folder";
     public static final String LAW_NAME = "law_name";
     public static final String SUBTITLE = "subtitle";
-    public static final String LAW_TYPE = "law_type";
+    public static final String LAW_LEVEL = "law_level";
     public static final String AUTHORITY = "authority";
+    public static final String AUTHORITY_PROVINCE = "authority_province";
+    public static final String AUTHORITY_CITY = "authority_city";
+    public static final String AUTHORITY_DISTRICT = "authority_district";
     public static final String TAGS = "tags";
     public static final String PUBLISH = "publish";
     public static final String STATUS = "status";
     public static final String VALID_FROM = "valid_from";
+    public static final String DOCUMENT_NO = "document_no";
     public static final String TITLE = "title";
     public static final String TITLE_NUMBER = "title_number";
     public static final String TERM_TEXT = "term_text";

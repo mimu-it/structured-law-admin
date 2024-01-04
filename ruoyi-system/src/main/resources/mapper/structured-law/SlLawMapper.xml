@@ -12,12 +12,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateBy"    column="update_by"    />
         <result property="categoryId"    column="category_id"    />
         <result property="name"    column="name"    />
-        <result property="lawType"    column="law_type"    />
+        <result property="lawLevel"    column="law_level"    />
         <result property="authority"    column="authority"    />
+        <result property="authorityProvince"    column="authority_province"    />
+        <result property="authorityCity"    column="authority_city"    />
+        <result property="authorityDistrict"    column="authority_district"    />
         <result property="publish"    column="publish"    />
         <result property="status"    column="status"    />
         <result property="lawOrder"    column="law_order"    />
         <result property="subtitle"    column="subtitle"    />
+        <result property="documentNo"    column="document_no"    />
+        <result property="documentType"    column="document_type"    />
         <result property="validFrom"    column="valid_from"    />
         <result property="ver"    column="ver"    />
         <result property="tags"    column="tags"    />
@@ -34,7 +39,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <sql id="selectSlLawVo">
-        select id, create_time, create_by, update_time, update_by, category_id, name, law_type, authority, publish, status, law_order, subtitle, valid_from, ver, tags, preface from sl_law
+        select id, create_time, create_by, update_time, update_by, category_id, name, law_level,
+               authority, authority_province, authority_city, authority_district, publish, status, law_order, subtitle,
+               document_no, document_type, valid_from, ver, tags, preface from sl_law
     </sql>
 
     <select id="selectSlLawListForSearch" resultMap="SlLawResult">
@@ -61,11 +68,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>  
             <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
             <if test="categoryId != null"> and category_id = #{categoryId}</if>
-            <if test="lawType != null  and lawType != ''"> and law_type = #{lawType}</if>
+            <if test="lawLevel != null  and lawLevel != ''"> and law_level = #{lawLevel}</if>
             <if test="authority != null  and authority != ''"> and authority = #{authority}</if>
+            <if test="authorityProvince != null  and authorityProvince != ''"> and authority_province = #{authorityProvince}</if>
+            <if test="authorityCity != null  and authorityCity != ''"> and authority_city = #{authorityCity}</if>
+            <if test="authorityDistrict != null  and authorityDistrict != ''"> and authority_district = #{authorityDistrict}</if>
             <if test="publish != null "> and publish = #{publish}</if>
             <if test="status != null "> and status = #{status}</if>
             <if test="subtitle != null  and subtitle != ''"> and subtitle = #{subtitle}</if>
+            <if test="documentNo != null  and documentNo != ''"> and document_no = #{documentNo}</if>
+            <if test="documentType != null  and documentType != ''"> and document_type = #{documentType}</if>
             <if test="validFrom != null "> and valid_from = #{validFrom}</if>
         </where>
     </select>
@@ -99,12 +111,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by,</if>
             <if test="categoryId != null">category_id,</if>
             <if test="name != null and name != ''">name,</if>
-            <if test="lawType != null and lawType != ''">law_type,</if>
+            <if test="lawLevel != null and lawLevel != ''">law_level,</if>
             <if test="authority != null">authority,</if>
+            <if test="authorityProvince != null">authority_province,</if>
+            <if test="authorityCity != null">authority_city,</if>
+            <if test="authorityDistrict != null">authority_district,</if>
             <if test="publish != null">publish,</if>
             <if test="status != null">status,</if>
             <if test="lawOrder != null">law_order,</if>
             <if test="subtitle != null">subtitle,</if>
+            <if test="documentNo != null">document_no,</if>
+            <if test="documentType != null">document_type,</if>
             <if test="validFrom != null">valid_from,</if>
             <if test="ver != null">ver,</if>
             <if test="tags != null">tags,</if>
@@ -117,12 +134,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">#{updateBy},</if>
             <if test="categoryId != null">#{categoryId},</if>
             <if test="name != null and name != ''">#{name},</if>
-            <if test="lawType != null and lawType != ''">#{lawType},</if>
+            <if test="lawLevel != null and lawLevel != ''">#{lawLevel},</if>
             <if test="authority != null">#{authority},</if>
+            <if test="authorityProvince != null">#{authorityProvince},</if>
+            <if test="authorityCity != null">#{authorityCity},</if>
+            <if test="authorityDistrict != null">#{authorityDistrict},</if>
             <if test="publish != null">#{publish},</if>
             <if test="status != null">#{status},</if>
             <if test="lawOrder != null">#{lawOrder},</if>
             <if test="subtitle != null">#{subtitle},</if>
+            <if test="documentNo != null">#{documentNo},</if>
+            <if test="documentType != null">#{documentType},</if>
             <if test="validFrom != null">#{validFrom},</if>
             <if test="ver != null">#{ver},</if>
             <if test="tags != null">#{tags},</if>
@@ -139,12 +161,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="categoryId != null">category_id = #{categoryId},</if>
             <if test="name != null and name != ''">name = #{name},</if>
-            <if test="lawType != null and lawType != ''">law_type = #{lawType},</if>
+            <if test="lawLevel != null and lawLevel != ''">law_level = #{lawLevel},</if>
             <if test="authority != null">authority = #{authority},</if>
+            <if test="authorityProvince != null">authority_province = #{authorityProvince},</if>
+            <if test="authorityCity != null">authority_city = #{authorityCity},</if>
+            <if test="authorityDistrict != null">authority_district = #{authorityDistrict},</if>
             <if test="publish != null">publish = #{publish},</if>
             <if test="status != null">status = #{status},</if>
             <if test="lawOrder != null">law_order = #{lawOrder},</if>
             <if test="subtitle != null">subtitle = #{subtitle},</if>
+            <if test="documentNo != null">document_no = #{documentNo},</if>
+            <if test="documentType != null">document_type = #{documentType},</if>
             <if test="validFrom != null">valid_from = #{validFrom},</if>
             <if test="ver != null">ver = #{ver},</if>
             <if test="tags != null">tags = #{tags},</if>

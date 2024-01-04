@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.SlAssociatedFileMapper">
+    
+    <resultMap type="SlAssociatedFile" id="SlAssociatedFileResult">
+        <result property="id"    column="id"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="lawOriginalId"    column="law_original_id"    />
+        <result property="lawId"    column="law_id"    />
+        <result property="name"    column="name"    />
+        <result property="documentType"    column="document_type"    />
+        <result property="content"    column="content"    />
+    </resultMap>
+
+    <sql id="selectSlAssociatedFileVo">
+        select id, create_by, create_time, update_by, update_time, law_original_id, law_id, name, document_type, content from sl_associated_file
+    </sql>
+
+    <select id="selectSlAssociatedFileList" parameterType="SlAssociatedFile" resultMap="SlAssociatedFileResult">
+        <include refid="selectSlAssociatedFileVo"/>
+        <where>  
+            <if test="lawId != null  and lawId != ''"> and law_id = #{lawId}</if>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="documentType != null  and documentType != ''"> and document_type = #{documentType}</if>
+            <if test="content != null  and content != ''"> and content = #{content}</if>
+        </where>
+    </select>
+    
+    <select id="selectSlAssociatedFileById" parameterType="String" resultMap="SlAssociatedFileResult">
+        <include refid="selectSlAssociatedFileVo"/>
+        where id = #{id}
+    </select>
+        
+    <insert id="insertSlAssociatedFile" parameterType="SlAssociatedFile" useGeneratedKeys="true" keyProperty="id">
+        insert into sl_associated_file
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="lawOriginalId != null and lawOriginalId != ''">law_original_id,</if>
+            <if test="lawId != null and lawId != ''">law_id,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="documentType != null and documentType != ''">document_type,</if>
+            <if test="content != null">content,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="lawOriginalId != null and lawOriginalId != ''">#{lawOriginalId},</if>
+            <if test="lawId != null and lawId != ''">#{lawId},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="documentType != null and documentType != ''">#{documentType},</if>
+            <if test="content != null">#{content},</if>
+         </trim>
+    </insert>
+
+    <update id="updateSlAssociatedFile" parameterType="SlAssociatedFile">
+        update sl_associated_file
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="lawOriginalId != null and lawOriginalId != ''">law_original_id = #{lawOriginalId},</if>
+            <if test="lawId != null and lawId != ''">law_id = #{lawId},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="documentType != null and documentType != ''">document_type = #{documentType},</if>
+            <if test="content != null">content = #{content},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteSlAssociatedFileById" parameterType="String">
+        delete from sl_associated_file where id = #{id}
+    </delete>
+
+    <delete id="deleteSlAssociatedFileByIds" parameterType="String">
+        delete from sl_associated_file where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

@@ -164,7 +164,7 @@
           <el-input v-model="form.titleNumber" placeholder="请输入条款数字标题" />
         </el-form-item>
         <el-form-item label="条款正文">
-          <editor v-model="form.termText" :min-height="192"/>
+          <el-input type="textarea" v-model="form.termText"></el-input>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">

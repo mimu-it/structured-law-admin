@@ -128,9 +128,12 @@
               </router-link>
             </template>
           </el-table-column>
-          <el-table-column label="子标题" align="left" prop="subtitle" width="200"/>
-          <el-table-column label="类型" align="left" prop="lawType" width="200"/>
+          <el-table-column label="发布文号" align="left" prop="documentNo" width="200"/>
+          <el-table-column label="效力级别" align="left" prop="lawLevel" width="200"/>
           <el-table-column label="制定机关" align="left" prop="authority" width="200"/>
+          <el-table-column label="制定机关所在省" align="left" prop="authorityProvince" width="200"/>
+          <el-table-column label="制定机关所在市" align="left" prop="authorityCity" width="200"/>
+          <el-table-column label="制定机关所在区" align="left" prop="authorityDistrict" width="200"/>
 
           <el-table-column label="状态" align="center" prop="status">
             <template slot-scope="scope">
@@ -158,15 +161,27 @@
 
     <!-- 添加或修改法律信息对话框 -->
     <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
-      <el-form ref="form" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="form" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="法律名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入法律名称"/>
         </el-form-item>
         <el-form-item label="制定机关" prop="authority">
           <el-input v-model="form.authority" placeholder="请输入制定机关"/>
         </el-form-item>
-        <el-form-item label="类型" prop="lawType">
-          <el-input v-model="form.lawType" placeholder="请输入类型"/>
+        <el-form-item label="制定机关所在省" prop="authorityProvince">
+          <el-input v-model="form.authorityProvince" placeholder="请输入制定机关所在省"/>
+        </el-form-item>
+        <el-form-item label="制定机关所在市" prop="authorityCity">
+          <el-input v-model="form.authorityCity" placeholder="请输入制定机关所在市"/>
+        </el-form-item>
+        <el-form-item label="制定机关所在区" prop="authorityDistrict">
+          <el-input v-model="form.authorityDistrict" placeholder="请输入制定机关所在区"/>
+        </el-form-item>
+        <el-form-item label="发布文号" prop="documentNo">
+          <el-input v-model="form.documentNo" placeholder="请输入发布文号"/>
+        </el-form-item>
+        <el-form-item label="效力级别" prop="lawLevel">
+          <el-input v-model="form.lawLevel" placeholder="请输入效力级别"/>
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请输入状态">
@@ -197,9 +212,6 @@
         </el-form-item>
         <el-form-item label="排序数字" prop="lawOrder">
           <el-input v-model="form.lawOrder" placeholder="请输入排序数字"/>
-        </el-form-item>
-        <el-form-item label="子标题" prop="subtitle">
-          <el-input v-model="form.subtitle" placeholder="请输入子标题"/>
         </el-form-item>
         <el-form-item label="版本" prop="ver">
           <el-input v-model="form.ver" placeholder="请输入版本"/>
@@ -269,7 +281,7 @@
           name: [
             {required: true, message: "法律名称不能为空", trigger: "blur"}
           ],
-          lawType: [
+          lawLevel: [
             {required: true, message: "类型,对标level不能为空", trigger: "change"}
           ],
         },
@@ -310,12 +322,16 @@
           id: null,
           categoryId: null,
           name: null,
-          lawType: null,
-          filename: null,
+          lawLevel: null,
+          authority: null,
+          authorityProvince: null,
+          authorityCity: null,
+          authorityDistrict: null,
           publish: null,
           expired: null,
           lawOrder: null,
           subtitle: null,
+          documentNo: null,
           validFrom: null,
           ver: null,
           tags: null
