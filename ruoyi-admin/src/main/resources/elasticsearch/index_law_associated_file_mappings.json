@@ -1,0 +1,20 @@
+{
+  "properties": {
+    "associated_file_id": {
+      "type": "long"
+    },
+    "law_id": {
+      "type": "long"
+    },
+    "associated_file_name": {
+      "type": "completion",
+      "analyzer": "ik_max_word"
+    },
+    "document_type": {
+      "type": "keyword"
+    },
+    "content_text": {
+      "type": "text"
+    }
+  }
+}

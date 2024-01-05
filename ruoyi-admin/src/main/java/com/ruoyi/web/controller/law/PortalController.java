@@ -1,14 +1,9 @@
 package com.ruoyi.web.controller.law;
 
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.elasticsearch.core.search.Hit;
-import co.elastic.clients.elasticsearch.core.search.TotalHits;
 import com.github.pagehelper.Page;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
@@ -16,14 +11,11 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.system.domain.SlLaw;
-import com.ruoyi.web.controller.elasticsearch.domain.IntegralProvision;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchConditionOptions;
-import com.ruoyi.web.controller.law.srv.ElasticSearchSrv;
+import com.ruoyi.web.controller.law.srv.ElasticSearchPortal;
 import com.ruoyi.web.controller.law.srv.PortalSrv;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.sort.ScoreSortBuilder;
-import org.elasticsearch.search.sort.SortOrder;
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,12 +26,10 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.File;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -60,7 +50,7 @@ public class PortalController extends BaseController {
     private PortalSrv portalSrv;
 
     @Resource
-    private ElasticSearchSrv elasticSearchSrv;
+    private ElasticSearchPortal elasticSearchSrv;
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
@@ -96,7 +86,7 @@ public class PortalController extends BaseController {
     }
 
     /**
-     * 使用elasticsearch 搜索
+     * 使用 elasticsearch 搜索条款
      *
      * http://localhost:8080/structured-law/portal/search?pageNum=1&&condition={termText:"全国"}
      *
@@ -104,36 +94,111 @@ public class PortalController extends BaseController {
      * @param condition
      * @return
      */
-    @GetMapping("/search")
-    public AjaxResult search(@RequestParam(Constants.PAGE_NUM) int pageNum, @RequestParam(Constants.CONDITION) String condition) {
+    @GetMapping("/search-law-provision")
+    public AjaxResult searchLawProvision(@RequestParam(Constants.PAGE_NUM) int pageNum,
+                             @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                             @RequestParam(Constants.CONDITION) String condition) {
         if(pageNum < 1) {
             pageNum = 1;
         }
 
-        IntegralProvision integralProvision = JSONUtil.toBean(condition, IntegralProvision.class);
+        IntegralFields integralProvision = JSONUtil.toBean(condition, IntegralFields.class);
 
-        SearchResponse<IntegralProvision> searchResponse = elasticSearchSrv.searchByPage(pageNum, integralProvision);
-
-        TotalHits total = searchResponse.hits().total();
-        List<Hit<IntegralProvision>> list = searchResponse.hits().hits();
-        List<IntegralProvision> integralProvisionList = new ArrayList<>(list.size());
-        for(Hit<IntegralProvision> hit : list) {
-            Double score = hit.score();
-            System.out.println("score: " + score);
-            IntegralProvision provision = hit.source();
-
-            Map<String, List<String>> highlightMap =  hit.highlight();
-
-            String termTextKey = StrUtil.toCamelCase(IntegralProvision.TERM_TEXT);
-            if(highlightMap.get(termTextKey) != null) {
-                List<String> termTextList = highlightMap.get(termTextKey);
-                provision.setTermText(CollectionUtil.join(termTextList, ""));
-            }
-
-            integralProvisionList.add(provision);
-        }
-        return success(integralProvisionList);
+        String[] fields = null;
+        SearchSourceBuilder searchSourceBuilder = elasticSearchSrv.mustConditions(integralProvision, null, null);
+        List<IntegralFields> matchList = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
+                pageNum, pageSize, fields,
+                IntegralFields.TERM_TEXT, IntegralFields.TITLE_NUMBER, searchSourceBuilder);
+        return success(matchList);
     }
+
+    /**
+     * 使用 elasticsearch 搜索法律
+     * @param pageNum
+     * @param pageSize
+     * @param condition
+     * @return
+     */
+    @GetMapping("/search-law")
+    public AjaxResult searchLaw(@RequestParam(Constants.PAGE_NUM) int pageNum,
+                                @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                                @RequestParam(Constants.CONDITION) String condition) {
+        if(pageNum < 1) {
+            pageNum = 1;
+        }
+
+        IntegralFields integralProvision = JSONUtil.toBean(condition, IntegralFields.class);
+
+        String[] fields = null;
+        SearchSourceBuilder searchSourceBuilder = elasticSearchSrv.mustConditions(integralProvision, null, null);
+        List<IntegralFields> matchList = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW,
+                pageNum, pageSize, fields,
+                IntegralFields.TERM_TEXT, null, searchSourceBuilder);
+        return success(matchList);
+    }
+
+    /**
+     * 获取法律详情
+     * @param lawId
+     * @param size
+     * @return
+     */
+    @GetMapping("/law-content")
+    public AjaxResult showLawContent(@RequestParam(IntegralFields.LAW_ID) long lawId,
+                                     @RequestParam(value=Constants.SIZE, required = false) Integer size) {
+        List<IntegralFields> matchOne = elasticSearchSrv.listByLawId(lawId, 1, new String[]{
+                IntegralFields.LAW_ID,
+                IntegralFields.LAW_NAME,
+                IntegralFields.LAW_LEVEL,
+                IntegralFields.AUTHORITY,
+                IntegralFields.PUBLISH,
+                IntegralFields.VALID_FROM,
+                IntegralFields.STATUS,
+                IntegralFields.DOCUMENT_NO
+        });
+
+        if (matchOne == null || matchOne.isEmpty()) {
+            return success(new ArrayList<>());
+        }
+
+        List<IntegralFields> matchList = elasticSearchSrv.listByLawId(lawId, size, new String[]{
+                IntegralFields.TITLE,
+                IntegralFields.TERM_TEXT
+        });
+
+        StringBuilder sb = new StringBuilder();
+        for(IntegralFields provision : matchList) {
+            String title = provision.getTitle();
+            int lastIdx = title.lastIndexOf("/");
+            if(lastIdx != -1) {
+                title = title.substring(lastIdx + 1);
+            }
+            sb.append(title).append(" ").append(provision.getTermText()).append("\n");
+        }
+
+        matchOne.get(0).setContentText(sb.toString());
+
+        return success(matchOne.get(0));
+    }
+
+
+    /**
+     *
+     * @param lawName
+     * @param size
+     * @return
+     */
+    @GetMapping("/law-history")
+    public AjaxResult listLawHistory(@RequestParam(IntegralFields.LAW_NAME) String lawName,
+                                     @RequestParam(value=Constants.SIZE, required = false) Integer size) {
+        List<IntegralFields> matchList = elasticSearchSrv.listLawHistory(lawName, size, new String[]{
+                IntegralFields.LAW_NAME,
+                IntegralFields.PUBLISH,
+                IntegralFields.VALID_FROM
+        });
+        return success(matchList);
+    }
+
 
     /**
      * 获取各个条件的选项
@@ -152,6 +217,7 @@ public class PortalController extends BaseController {
         options.setAuthorityOptions(authorityOptions);
         options.setStatusOptions(statusOptions);
 
+        //collect_status 不知对应什么
         return success(options);
     }
 
@@ -177,30 +243,8 @@ public class PortalController extends BaseController {
         }
 
         try {
-            elasticSearchSrv.initIndex();
-
-            int pageNum = 0;
-            int pageSize = 50;
-            Page<IntegralProvision> page = new Page<>();
-            /**
-             * 分页往 elasticsearch 中插入数据
-             */
-            while (pageNum == 0 || page.size() > 0) {
-                if(pageNum != 0 && page.isEmpty()) {
-                    /** 如果不是第0页，并且最近一次查询得到的数据是空的，说明遍历到尾了，应该退出 */
-                    break;
-                }
-
-                if(!page.getResult().isEmpty()) {
-                    /** 如果有数据，就批量插入 elasticsearch 中 */
-                    elasticSearchSrv.bulkInsert(page.getResult());
-                }
-
-                /** 查询当前页的数据 */
-                pageNum++;
-                page = portalSrv.listIntegralProvisionsByPage(pageNum, pageSize);
-            }
-
+            elasticSearchSrv.initAllIndex();
+            elasticSearchSrv.importDataToAllIndex();
             return success();
         }
         finally {
@@ -215,8 +259,8 @@ public class PortalController extends BaseController {
     @PutMapping("/deleteIndex")
     public AjaxResult deleteIndex() {
         try {
-            elasticSearchSrv.deleteIndexOfLaw();
-        } catch (IOException e) {
+            elasticSearchSrv.deleteAllIndex();
+        } catch (Exception e) {
             logger.error("", e);
             return error(e.getMessage());
         }
@@ -236,17 +280,16 @@ public class PortalController extends BaseController {
         }
 
         List<String> suggestions = new ArrayList<>();
-        List<String> authoritySuggest = elasticSearchSrv.suggest(IntegralProvision.AUTHORITY, text);
+        List<String> authoritySuggest = elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW, IntegralFields.AUTHORITY, text, null, null);
         suggestions.addAll(authoritySuggest);
 
-        List<String> lawNameSuggest = elasticSearchSrv.suggest(StrUtil.toCamelCase(IntegralProvision.LAW_NAME), text);
+        List<String> lawNameSuggest = elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW, IntegralFields.LAW_NAME, text, null, null);
         for(String suggest : lawNameSuggest) {
             if(suggestions.contains(suggest)) {
                 continue;
             }
             suggestions.add(suggest);
         }
-
 
         return success(suggestions);
     }
@@ -261,10 +304,15 @@ public class PortalController extends BaseController {
         if(StrUtil.isBlank(field) || StrUtil.isBlank(text)) {
             return success();
         }
-        return success(elasticSearchSrv.suggest(field, text));
+        return success(elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW_PROVISION, field, text, null, null));
     }
 
 
+    /**
+     *
+     * @param command
+     * @return
+     */
     private String[] cmd(String command) {
         String OS = System.getProperty("os.name").toLowerCase();
         return OS.indexOf("windows") > -1 ?  new String[]{"cmd", "/c", command} : new String[]{"/bin/sh", "-c", command};

@@ -8,12 +8,13 @@ import java.util.Date;
  * @apiNote
  * 用于保存到 es 的宽表对象
  */
-public class IntegralProvision {
+public class IntegralFields {
 
     private Long lawId;
     private Long provisionId;
-    private String folder;
+    private Long associatedFileId;
     private String lawName;
+    private String associatedFileName;
     private String subtitle;
     private String lawLevel;
     private String authority;
@@ -25,10 +26,12 @@ public class IntegralProvision {
     private Integer status;
     private Date validFrom;
     private String documentNo;
+    private String documentType;
     private String title;
     private String titleNumber;
     private String preface;
     private String termText;
+    private String contentText;
 
     public Long getLawId() {
         return lawId;
@@ -44,14 +47,6 @@ public class IntegralProvision {
 
     public void setProvisionId(Long provisionId) {
         this.provisionId = provisionId;
-    }
-
-    public String getFolder() {
-        return folder;
-    }
-
-    public void setFolder(String folder) {
-        this.folder = folder;
     }
 
     public String getLawName() {
@@ -182,9 +177,41 @@ public class IntegralProvision {
         this.documentNo = documentNo;
     }
 
+    public String getContentText() {
+        return contentText;
+    }
+
+    public void setContentText(String contentText) {
+        this.contentText = contentText;
+    }
+
+    public Long getAssociatedFileId() {
+        return associatedFileId;
+    }
+
+    public void setAssociatedFileId(Long associatedFileId) {
+        this.associatedFileId = associatedFileId;
+    }
+
+    public String getDocumentType() {
+        return documentType;
+    }
+
+    public void setDocumentType(String documentType) {
+        this.documentType = documentType;
+    }
+
+    public String getAssociatedFileName() {
+        return associatedFileName;
+    }
+
+    public void setAssociatedFileName(String associatedFileName) {
+        this.associatedFileName = associatedFileName;
+    }
+
     public static final String LAW_ID = "law_id";
     public static final String PROVISION_ID = "provision_id";
-    public static final String FOLDER = "folder";
+    public static final String ASSOCIATED_FILE_ID = "associated_file_id";
     public static final String LAW_NAME = "law_name";
     public static final String SUBTITLE = "subtitle";
     public static final String LAW_LEVEL = "law_level";

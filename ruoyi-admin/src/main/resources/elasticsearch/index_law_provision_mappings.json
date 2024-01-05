@@ -1,5 +1,8 @@
 {
   "properties": {
+    "provision_id": {
+      "type": "long"
+    },
     "law_id": {
       "type": "long"
     },
@@ -35,6 +38,28 @@
     "valid_from": {
       "type": "date",
       "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+    },
+    "preface": {
+      "type": "text",
+      "analyzer": "ik_max_word"
+    },
+    "title": {
+      "type": "text",
+      "analyzer": "ik_max_word"
+    },
+    "title_number": {
+      "type": "text",
+      "analyzer": "ik_max_word",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "ignore_above": 256
+        }
+      }
+    },
+    "term_text": {
+      "type": "text",
+      "analyzer": "ik_max_word"
     }
   }
 }

@@ -1,12 +1,11 @@
 package com.ruoyi.web.controller.elasticsearch;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import org.apache.http.HttpHost;
 
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,13 +16,17 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class EsConfig {
+
+    @Value("${spring.elasticsearch.uri}")
+    private String uri;
+
+    @Value("${spring.elasticsearch.port}")
+    private Integer port;
+
     @Bean
-    public ElasticsearchClient esClient(){
+    public RestHighLevelClient esClient(){
         // 创建ES客户端部分
-        RestClient restClient = RestClient.builder(
-                new HttpHost("localhost", 9200)).build();
-        ElasticsearchTransport transport = new RestClientTransport(
-                restClient, new JacksonJsonpMapper());
-        return new ElasticsearchClient(transport);
+        RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(uri, port));
+        return new RestHighLevelClient(restClientBuilder);
     }
 }

@@ -31,7 +31,8 @@
         <velocity.version>2.3</velocity.version>
         <jwt.version>0.9.1</jwt.version>
         <hutool.version>5.7.22</hutool.version>
-        <elasticsearch.version>7.17.16</elasticsearch.version>
+        <!-- elasticsearch.version>7.17.16</elasticsearch.version -->
+        <elasticsearch.version>7.7.0</elasticsearch.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -184,9 +185,9 @@
             </dependency>
 
             <dependency>
-                <groupId>co.elastic.clients</groupId>
-                <artifactId>elasticsearch-java</artifactId>
-                <version>8.0.1</version>
+                <groupId>org.elasticsearch.client</groupId>
+                <artifactId>elasticsearch-rest-high-level-client</artifactId>
+                <version>${elasticsearch.version}</version>
             </dependency>
 
         </dependencies>

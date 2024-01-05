@@ -16,15 +16,15 @@ public class SlAssociatedFile extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     /** $column.columnComment */
-    @Excel(name = "${comment}", readConverterExp = "$column.readConverterExp()")
-    private String id;
+    @Excel(name = "id", readConverterExp = "$column.readConverterExp()")
+    private Long id;
 
     /** 关联的法律库官网的法律id */
     private String lawOriginalId;
 
     /** 关联的法律id */
     @Excel(name = "关联的法律id")
-    private String lawId;
+    private Long lawId;
 
     /** 名称 */
     @Excel(name = "名称")
@@ -38,16 +38,15 @@ public class SlAssociatedFile extends BaseEntity
     @Excel(name = "正文")
     private String content;
 
-    public void setId(String id) 
-    {
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public String getId() 
-    {
-        return id;
-    }
-    public void setLawOriginalId(String lawOriginalId) 
+    public void setLawOriginalId(String lawOriginalId)
     {
         this.lawOriginalId = lawOriginalId;
     }
@@ -56,16 +55,16 @@ public class SlAssociatedFile extends BaseEntity
     {
         return lawOriginalId;
     }
-    public void setLawId(String lawId) 
-    {
+
+    public Long getLawId() {
+        return lawId;
+    }
+
+    public void setLawId(Long lawId) {
         this.lawId = lawId;
     }
 
-    public String getLawId() 
-    {
-        return lawId;
-    }
-    public void setName(String name) 
+    public void setName(String name)
     {
         this.name = name;
     }

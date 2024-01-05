@@ -114,8 +114,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
                 //TODO /structured-law/portal/search 需要完善token访问
                 .antMatchers("/login", "/register", "/captchaImage",
                         "/structured-law/portal/search",
+                        "/structured-law/portal/search-law-provision",
+                        "/structured-law/portal/search-law",
                         "/structured-law/portal/suggest",
                         "/structured-law/portal/suggest-multi",
+                        "/structured-law/portal/law-content",
+                        "/structured-law/portal/law-history",
                         "/structured-law/portal/conditionsOptions").permitAll()
                 // 静态资源，可匿名访问
                 .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**").permitAll()

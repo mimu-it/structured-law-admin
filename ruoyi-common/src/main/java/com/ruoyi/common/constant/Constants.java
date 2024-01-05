@@ -171,7 +171,11 @@ public class Constants
     public final static String ESCAPED_PREFIX = "_escaped__";
 
     public final static String CONDITION = "condition";
-    public final static String PAGE_NUM = "pageNum";
+    public final static String PAGE_NUM = "page_num";
+    public final static String PAGE_SIZE = "page_size";
+
+    public final static String SIZE = "size";
+
     public final static String TEXT = "text";
     public final static String FIELD = "field";
 }

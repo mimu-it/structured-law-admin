@@ -60,6 +60,10 @@ spring:
                     config:
                         multi-statement-allow: true
 
+    elasticsearch:
+        uri: localhost
+        port: 9200
+
 backup:
     path: /Volumes/HD-FOR-MAC/DEV_ENV/upload_space/structured-law/backup
     db:

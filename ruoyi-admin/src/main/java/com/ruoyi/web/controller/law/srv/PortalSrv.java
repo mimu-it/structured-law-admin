@@ -9,13 +9,14 @@ import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.utils.spring.SpringUtils;
+import com.ruoyi.system.domain.SlAssociatedFile;
 import com.ruoyi.system.domain.SlLaw;
-import com.ruoyi.system.domain.SlLawCategory;
 import com.ruoyi.system.domain.SlLawProvision;
+import com.ruoyi.system.service.ISlAssociatedFileService;
 import com.ruoyi.system.service.ISlLawCategoryService;
 import com.ruoyi.system.service.ISlLawProvisionService;
 import com.ruoyi.system.service.ISlLawService;
-import com.ruoyi.web.controller.elasticsearch.domain.IntegralProvision;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +42,9 @@ public class PortalSrv {
     @Autowired
     private ISlLawService slLawService;
 
+    @Autowired
+    private ISlAssociatedFileService slAssociatedFileService;
+
 
     /**
      * 项目启动时，初始化数据到redis
@@ -52,33 +56,115 @@ public class PortalSrv {
     }
 
     /**
-     *
+     * 分页列出法律信息数据
      * @param pageNum
      * @param pageSize
      * @return
      */
-    public Page<IntegralProvision> listIntegralProvisionsByPage(int pageNum, int pageSize) {
+    public Page<IntegralFields> listLawByPage(int pageNum, int pageSize) {
+        PageHelper.startPage(pageNum, pageSize, null);
+
+        SlLaw slLaw = new SlLaw();
+        List<SlLaw> list = slLawService.selectSlLawList(slLaw);
+        List<IntegralFields> integralFieldsList = new ArrayList<>(list.size());
+        for(SlLaw law : list) {
+            IntegralFields integralFields = new IntegralFields();
+            this.copyToIntegralFields(law, integralFields);
+            integralFieldsList.add(integralFields);
+        }
+
+        Page<IntegralFields> newPage = new Page<>();
+        BeanUtil.copyProperties(list, newPage);
+        newPage.clear();
+        newPage.addAll(integralFieldsList);
+
+        return newPage;
+    }
+
+    /**
+     * 分页列出关联文件信息数据
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    public Page<IntegralFields> listAssociatedFileByPage(int pageNum, int pageSize) {
+        PageHelper.startPage(pageNum, pageSize, null);
+
+        SlAssociatedFile associatedFileParam = new SlAssociatedFile();
+        List<SlAssociatedFile> list = slAssociatedFileService.selectSlAssociatedFileList(associatedFileParam);
+
+        List<IntegralFields> integralFieldsList = new ArrayList<>(list.size());
+        for(SlAssociatedFile associatedFile : list) {
+            IntegralFields integralFields = new IntegralFields();
+
+            integralFields.setAssociatedFileId(associatedFile.getId());
+            integralFields.setAssociatedFileName(associatedFile.getName());
+            integralFields.setDocumentType(associatedFile.getDocumentType());
+            integralFields.setLawId(associatedFile.getLawId());
+            integralFields.setContentText(associatedFile.getContent());
+
+            integralFieldsList.add(integralFields);
+        }
+
+        Page<IntegralFields> newPage = new Page<>();
+        BeanUtil.copyProperties(list, newPage);
+        newPage.clear();
+        newPage.addAll(integralFieldsList);
+        return newPage;
+    }
+
+
+    /**
+     * law 把数据给 integralFields
+     * @param law
+     * @param integralFields
+     */
+    private void copyToIntegralFields(SlLaw law, IntegralFields integralFields) {
+        if(integralFields.getLawId() == null) {
+            integralFields.setLawId(law.getId());
+        }
+
+        integralFields.setLawName(law.getName());
+        integralFields.setLawLevel(law.getLawLevel());
+        integralFields.setAuthority(law.getAuthority());
+        integralFields.setAuthorityProvince(law.getAuthorityProvince());
+        integralFields.setAuthorityCity(law.getAuthorityCity());
+        integralFields.setAuthorityDistrict(law.getAuthorityDistrict());
+        integralFields.setPublish(law.getPublish());
+        integralFields.setStatus(law.getStatus());
+        integralFields.setValidFrom(law.getValidFrom());
+        integralFields.setTags(law.getTags());
+        integralFields.setDocumentNo(law.getDocumentNo());
+    }
+
+    /**
+     * 分页列出法律条款信息数据
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    public Page<IntegralFields> listProvisionByPage(int pageNum, int pageSize) {
         PageHelper.startPage(pageNum, pageSize, null);
 
         SlLawProvision slLawProvision = new SlLawProvision();
         Page<SlLawProvision> list = (Page<SlLawProvision>) slLawProvisionService.selectSlLawProvisionList(slLawProvision);
 
-        List<IntegralProvision> integralProvisionList = new ArrayList<>(list.size());
+        List<IntegralFields> integralFieldsList = new ArrayList<>(list.size());
 
         LFUCache<Long, SlLaw> cacheLaw = CacheUtil.newLFUCache(10);
-        LFUCache<Long, SlLawCategory> cacheCategory = CacheUtil.newLFUCache(10);
         for(SlLawProvision row : list) {
-            IntegralProvision integralProvision = new IntegralProvision();
-            integralProvision.setLawId(row.getLawId());
-            integralProvision.setProvisionId(row.getId());
-            integralProvision.setTitle(row.getTitle());
-            integralProvision.setTitleNumber(row.getTitleNumber());
-            integralProvision.setTermText(row.getTermText());
+            IntegralFields integralFields = new IntegralFields();
+            integralFields.setLawId(row.getLawId());
+            integralFields.setProvisionId(row.getId());
+            integralFields.setTitle(row.getTitle());
+            integralFields.setTitleNumber(row.getTitleNumber());
+            integralFields.setTermText(row.getTermText());
 
             if(ObjectUtil.isNotNull(row.getLawId())) {
                 SlLaw law = cacheLaw.get(row.getLawId());
                 if(law == null) {
                     law = slLawService.getById(row.getLawId(), new String[]{
+                            SlLaw.ID,
                             SlLaw.CATEGORY_ID,
                             SlLaw.NAME,
                             SlLaw.LAW_LEVEL,
@@ -93,34 +179,17 @@ public class PortalSrv {
                     cacheLaw.put(row.getLawId(), law);
                 }
 
-                integralProvision.setLawName(law.getName());
-                integralProvision.setLawLevel(law.getLawLevel());
-                integralProvision.setAuthority(law.getAuthority());
-                integralProvision.setPublish(law.getPublish());
-                integralProvision.setStatus(law.getStatus());
-                integralProvision.setSubtitle(law.getSubtitle());
-                integralProvision.setValidFrom(law.getValidFrom());
-                integralProvision.setTags(law.getTags());
-                integralProvision.setPreface(law.getPreface());
-
-                SlLawCategory category = cacheCategory.get(law.getCategoryId());
-                if(category == null) {
-                    category = slLawCategoryService.getById(law.getCategoryId(), new String[]{
-                            SlLawCategory.FOLDER
-                    });
-                    cacheCategory.put(law.getCategoryId(), category);
-                }
-
-                integralProvision.setFolder(category.getFolder());
+                this.copyToIntegralFields(law, integralFields);
+                integralFields.setPreface(law.getPreface());
             }
 
-            integralProvisionList.add(integralProvision);
+            integralFieldsList.add(integralFields);
         }
 
-        Page<IntegralProvision> newPage = new Page<>();
+        Page<IntegralFields> newPage = new Page<>();
         BeanUtil.copyProperties(list, newPage);
         newPage.clear();
-        newPage.addAll(integralProvisionList);
+        newPage.addAll(integralFieldsList);
 
         return newPage;
     }
