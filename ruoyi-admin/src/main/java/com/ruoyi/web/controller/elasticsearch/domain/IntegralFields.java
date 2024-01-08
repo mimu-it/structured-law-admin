@@ -8,8 +8,8 @@ import java.util.Date;
  * @apiNote
  * 用于保存到 es 的宽表对象
  */
-public class IntegralFields {
-
+public class IntegralFields implements EsFields{
+    private String esDocId;
     private Long lawId;
     private Long provisionId;
     private Long associatedFileId;
@@ -22,10 +22,18 @@ public class IntegralFields {
     private String authorityCity;
     private String authorityDistrict;
     private String tags;
+
     private Date publish;
-    private Integer status;
+    private String publishRange;
+
     private Date validFrom;
+    private String validFromRange;
+
+    private Integer status;
+
     private String documentNo;
+    private String[] documentNoArray;
+
     private String documentType;
     private String title;
     private String titleNumber;
@@ -33,6 +41,16 @@ public class IntegralFields {
     private String termText;
     private String contentText;
 
+    @Override
+    public String getEsDocId() {
+        return esDocId;
+    }
+
+    public void setEsDocId(String esDocId) {
+        this.esDocId = esDocId;
+    }
+
+    @Override
     public Long getLawId() {
         return lawId;
     }
@@ -41,6 +59,7 @@ public class IntegralFields {
         this.lawId = lawId;
     }
 
+    @Override
     public Long getProvisionId() {
         return provisionId;
     }
@@ -49,6 +68,7 @@ public class IntegralFields {
         this.provisionId = provisionId;
     }
 
+    @Override
     public String getLawName() {
         return lawName;
     }
@@ -57,6 +77,7 @@ public class IntegralFields {
         this.lawName = lawName;
     }
 
+    @Override
     public String getSubtitle() {
         return subtitle;
     }
@@ -65,6 +86,7 @@ public class IntegralFields {
         this.subtitle = subtitle;
     }
 
+    @Override
     public String getLawLevel() {
         return lawLevel;
     }
@@ -73,6 +95,7 @@ public class IntegralFields {
         this.lawLevel = lawLevel;
     }
 
+    @Override
     public String getTags() {
         return tags;
     }
@@ -81,6 +104,7 @@ public class IntegralFields {
         this.tags = tags;
     }
 
+    @Override
     public Date getPublish() {
         return publish;
     }
@@ -89,6 +113,7 @@ public class IntegralFields {
         this.publish = publish;
     }
 
+    @Override
     public Date getValidFrom() {
         return validFrom;
     }
@@ -97,6 +122,7 @@ public class IntegralFields {
         this.validFrom = validFrom;
     }
 
+    @Override
     public String getTitle() {
         return title;
     }
@@ -105,6 +131,7 @@ public class IntegralFields {
         this.title = title;
     }
 
+    @Override
     public String getTermText() {
         return termText;
     }
@@ -113,6 +140,7 @@ public class IntegralFields {
         this.termText = termText;
     }
 
+    @Override
     public String getAuthority() {
         return authority;
     }
@@ -121,6 +149,7 @@ public class IntegralFields {
         this.authority = authority;
     }
 
+    @Override
     public Integer getStatus() {
         return status;
     }
@@ -129,6 +158,7 @@ public class IntegralFields {
         this.status = status;
     }
 
+    @Override
     public String getTitleNumber() {
         return titleNumber;
     }
@@ -137,6 +167,7 @@ public class IntegralFields {
         this.titleNumber = titleNumber;
     }
 
+    @Override
     public String getPreface() {
         return preface;
     }
@@ -145,6 +176,7 @@ public class IntegralFields {
         this.preface = preface;
     }
 
+    @Override
     public String getAuthorityProvince() {
         return authorityProvince;
     }
@@ -153,6 +185,7 @@ public class IntegralFields {
         this.authorityProvince = authorityProvince;
     }
 
+    @Override
     public String getAuthorityCity() {
         return authorityCity;
     }
@@ -161,6 +194,7 @@ public class IntegralFields {
         this.authorityCity = authorityCity;
     }
 
+    @Override
     public String getAuthorityDistrict() {
         return authorityDistrict;
     }
@@ -169,6 +203,7 @@ public class IntegralFields {
         this.authorityDistrict = authorityDistrict;
     }
 
+    @Override
     public String getDocumentNo() {
         return documentNo;
     }
@@ -177,6 +212,7 @@ public class IntegralFields {
         this.documentNo = documentNo;
     }
 
+    @Override
     public String getContentText() {
         return contentText;
     }
@@ -185,6 +221,7 @@ public class IntegralFields {
         this.contentText = contentText;
     }
 
+    @Override
     public Long getAssociatedFileId() {
         return associatedFileId;
     }
@@ -193,6 +230,7 @@ public class IntegralFields {
         this.associatedFileId = associatedFileId;
     }
 
+    @Override
     public String getDocumentType() {
         return documentType;
     }
@@ -201,12 +239,40 @@ public class IntegralFields {
         this.documentType = documentType;
     }
 
+    @Override
     public String getAssociatedFileName() {
         return associatedFileName;
     }
 
     public void setAssociatedFileName(String associatedFileName) {
         this.associatedFileName = associatedFileName;
+    }
+
+    @Override
+    public String[] getDocumentNoArray() {
+        return documentNoArray;
+    }
+
+    public void setDocumentNoArray(String[] documentNoArray) {
+        this.documentNoArray = documentNoArray;
+    }
+
+    @Override
+    public String getPublishRange() {
+        return publishRange;
+    }
+
+    public void setPublishRange(String publishRange) {
+        this.publishRange = publishRange;
+    }
+
+    @Override
+    public String getValidFromRange() {
+        return validFromRange;
+    }
+
+    public void setValidFromRange(String validFromRange) {
+        this.validFromRange = validFromRange;
     }
 
     public static final String LAW_ID = "law_id";
@@ -228,6 +294,9 @@ public class IntegralFields {
     public static final String TITLE_NUMBER = "title_number";
     public static final String TERM_TEXT = "term_text";
     public static final String PREFACE = "preface";
+    public static final String CONTENT_TEXT = "content_text";
+    public static final String ASSOCIATED_FILE_NAME = "associated_file_name";
+
 
     /*public static void main(String[] args) {
         List<String> list =  BaseEntity.generateConstants(new IntegralProvision());

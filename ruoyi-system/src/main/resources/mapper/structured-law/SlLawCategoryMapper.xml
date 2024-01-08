@@ -30,7 +30,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </sql>
 
 
-    <select id="listLawType" resultType="string">
+    <select id="listLawLevel" resultType="string">
         select distinct name from sl_law_category
     </select>
 

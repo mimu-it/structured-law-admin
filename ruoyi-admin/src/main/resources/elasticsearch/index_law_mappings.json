@@ -27,10 +27,10 @@
       "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
     },
     "status": {
-      "type": "text"
+      "type": "keyword"
     },
     "document_no": {
-      "type": "text"
+      "type": "keyword"
     },
     "valid_from": {
       "type": "date",

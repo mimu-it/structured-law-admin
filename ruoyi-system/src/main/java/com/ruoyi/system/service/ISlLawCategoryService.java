@@ -49,7 +49,7 @@ public interface ISlLawCategoryService
      * 列举"效力"， 实际就是法规类型
      * @return
      */
-    List<String> listLawType();
+    List<String> listLawLevel();
 
 
     /**

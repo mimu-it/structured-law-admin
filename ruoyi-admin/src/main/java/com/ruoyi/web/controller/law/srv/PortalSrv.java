@@ -6,23 +6,17 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
-import com.ruoyi.common.constant.CacheConstants;
-import com.ruoyi.common.core.redis.RedisCache;
-import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.system.domain.SlAssociatedFile;
 import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.domain.SlLawProvision;
 import com.ruoyi.system.service.ISlAssociatedFileService;
-import com.ruoyi.system.service.ISlLawCategoryService;
 import com.ruoyi.system.service.ISlLawProvisionService;
 import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -33,8 +27,6 @@ import java.util.List;
 @Service
 public class PortalSrv {
 
-    @Autowired
-    private ISlLawCategoryService slLawCategoryService;
 
     @Autowired
     private ISlLawProvisionService slLawProvisionService;
@@ -45,15 +37,6 @@ public class PortalSrv {
     @Autowired
     private ISlAssociatedFileService slAssociatedFileService;
 
-
-    /**
-     * 项目启动时，初始化数据到redis
-     */
-    @PostConstruct
-    public void init() {
-        this.clearConditionOptionsCache();
-        this.loadConditionOptions();
-    }
 
     /**
      * 分页列出法律信息数据
@@ -69,6 +52,8 @@ public class PortalSrv {
         List<IntegralFields> integralFieldsList = new ArrayList<>(list.size());
         for(SlLaw law : list) {
             IntegralFields integralFields = new IntegralFields();
+            /** set_id 用于为es指定_id, 这样插入同样的数据只会修改，不会新增 */
+            integralFields.setEsDocId(String.valueOf(law.getId()));
             this.copyToIntegralFields(law, integralFields);
             integralFieldsList.add(integralFields);
         }
@@ -96,7 +81,8 @@ public class PortalSrv {
         List<IntegralFields> integralFieldsList = new ArrayList<>(list.size());
         for(SlAssociatedFile associatedFile : list) {
             IntegralFields integralFields = new IntegralFields();
-
+            /** set_id 用于为es指定_id, 这样插入同样的数据只会修改，不会新增 */
+            integralFields.setEsDocId(String.valueOf(associatedFile.getId()));
             integralFields.setAssociatedFileId(associatedFile.getId());
             integralFields.setAssociatedFileName(associatedFile.getName());
             integralFields.setDocumentType(associatedFile.getDocumentType());
@@ -116,6 +102,9 @@ public class PortalSrv {
 
     /**
      * law 把数据给 integralFields
+     * SELECT * FROM structured_law.sl_law where DATE_FORMAT(publish, '%Y-%m-%d')="0000-00-00";
+     * update structured_law.sl_law set publish = null where DATE_FORMAT(publish, '%Y-%m-%d')="0000-00-00";
+     * update structured_law.sl_law set valid_from=null where DATE_FORMAT(valid_from, '%Y-%m-%d')="0000-00-00";
      * @param law
      * @param integralFields
      */
@@ -154,6 +143,9 @@ public class PortalSrv {
         LFUCache<Long, SlLaw> cacheLaw = CacheUtil.newLFUCache(10);
         for(SlLawProvision row : list) {
             IntegralFields integralFields = new IntegralFields();
+            /** set_id 用于为es指定_id, 这样插入同样的数据只会修改，不会新增 */
+            integralFields.setEsDocId(String.valueOf(row.getId()));
+
             integralFields.setLawId(row.getLawId());
             integralFields.setProvisionId(row.getId());
             integralFields.setTitle(row.getTitle());
@@ -192,40 +184,5 @@ public class PortalSrv {
         newPage.addAll(integralFieldsList);
 
         return newPage;
-    }
-
-
-    /**
-     * 把查询选项都缓存到redis中
-     */
-    private void loadConditionOptions() {
-        List<String> lawTypeOptions = slLawCategoryService.listLawType();
-        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.LAW_LEVEL), lawTypeOptions);
-
-        List<String> authorityOptions = slLawService.listAuthority();
-        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.AUTHORITY), authorityOptions);
-
-        List<Integer> statusOptions = slLawService.listStatus();
-        SpringUtils.getBean(RedisCache.class).setCacheObject(getConditionOptionsCacheKey(SlLaw.STATUS), statusOptions);
-
-        //TODO 征集状态是啥
-    }
-
-    /**
-     * 清空结构化法条所使用的查询条件选项缓存
-     */
-    public void clearConditionOptionsCache() {
-        Collection<String> keys = SpringUtils.getBean(RedisCache.class).keys(CacheConstants.STRUCTURED_LAW_CONDITION_OPTIONS_KEY + "*");
-        SpringUtils.getBean(RedisCache.class).deleteObject(keys);
-    }
-
-    /**
-     * 设置cache key
-     *
-     * @param configKey 参数键
-     * @return 缓存键key
-     */
-    public static String getConditionOptionsCacheKey(String configKey) {
-        return CacheConstants.STRUCTURED_LAW_CONDITION_OPTIONS_KEY + configKey;
     }
 }

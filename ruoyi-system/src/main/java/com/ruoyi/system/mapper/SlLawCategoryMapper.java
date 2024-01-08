@@ -50,7 +50,7 @@ public interface SlLawCategoryMapper
      * 列举效力
      * @return
      */
-    List<String> listLawType();
+    List<String> listLawLevel();
 
 
     /**

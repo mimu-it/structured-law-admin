@@ -7,7 +7,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.github.pagehelper.Page;
+import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -27,9 +30,7 @@ import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
@@ -73,15 +74,15 @@ public class ElasticSearchPortal {
     RestHighLevelClient client;
 
     @Resource
-    EsSrv esLawSrv;
+    AbstractEsSrv esLawSrv;
 
     @Resource
-    EsSrv esLawProvisionSrv;
+    AbstractEsSrv esLawProvisionSrv;
 
     @Resource
-    EsSrv esLawAssociatedFileSrv;
+    AbstractEsSrv esLawAssociatedFileSrv;
 
-    Map<String, EsSrv> srvMap = new HashMap<>();
+    Map<String, AbstractEsSrv> srvMap = new HashMap<>();
 
     @PostConstruct
     public void initSrvMapping() {
@@ -129,7 +130,7 @@ public class ElasticSearchPortal {
                 return;
             }
 
-            EsSrv esSrv = srvMap.get(indexName);
+            AbstractEsSrv esSrv = srvMap.get(indexName);
             if(esSrv == null) {
                 throw new IllegalStateException("No es srv found");
             }
@@ -312,15 +313,8 @@ public class ElasticSearchPortal {
             if(!page.getResult().isEmpty()) {
                 /** 如果有数据，就批量插入 elasticsearch 中 */
                 try {
-
-                    List<String> dataJsonList = new ArrayList<>();
                     List<IntegralFields> rowList = page.getResult();
-                    for(IntegralFields row : rowList) {
-                        String json = mapper.writeValueAsString(row);
-                        dataJsonList.add(json);
-                    }
-
-                    bulkInsert(indexName, dataJsonList);
+                    this.bulkInsert(indexName, rowList);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -329,7 +323,7 @@ public class ElasticSearchPortal {
             /** 查询当前页的数据 */
             pageNum++;
 
-            EsSrv esSrv = srvMap.get(indexName);
+            AbstractEsSrv esSrv = srvMap.get(indexName);
             if(esSrv == null) {
                 throw new IllegalStateException("No es srv found");
             }
@@ -344,8 +338,8 @@ public class ElasticSearchPortal {
      *
      * @throws IOException
      */
-    public void bulkInsert(String indexName, List<String> dataJsonList) {
-        if (dataJsonList.isEmpty()) {
+    public void bulkInsert(String indexName, List<IntegralFields> dataList) {
+        if (dataList.isEmpty()) {
             return;
         }
 
@@ -353,9 +347,13 @@ public class ElasticSearchPortal {
         BulkResponse response;
         try {
             //最大数量不得超过20万
-            for (String json : dataJsonList) {
+            for (IntegralFields item : dataList) {
+                String json = mapper.writeValueAsString(item);
                 IndexRequest request = new IndexRequest(indexName);
-                request.source(json, XContentType.JSON);
+                /** 避免request.id(item.getEsDocId()); 可以成功指定  _id, 这样就可以达成存在并替换，已手工测试成功 */
+                request.id(item.getEsDocId());
+                /** DocWriteRequest.OpType.INDEX 意味着存在并替换 */
+                request.source(json, XContentType.JSON).opType(DocWriteRequest.OpType.INDEX);
                 bulkRequest.add(request);
             }
 
@@ -407,26 +405,35 @@ public class ElasticSearchPortal {
         SearchRequest searchRequest = new SearchRequest(INDEX__LAW);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        /*
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery().must(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawName))
-        );
+        );*/
+        searchSourceBuilder.query(QueryBuilders.wildcardQuery(IntegralFields.LAW_NAME, lawName + "*"));
 
         searchSourceBuilder.sort(IntegralFields.PUBLISH, SortOrder.DESC);
-        return this.doSearch(size, fields, searchRequest, searchSourceBuilder);
+        return this.searchToList(size, fields,
+                new String[]{ IntegralFields.TERM_TEXT, IntegralFields.LAW_NAME },
+                searchRequest, searchSourceBuilder);
     }
 
     /**
      * 通过id查询
+     * http://localhost:8080/structured-law/portal/law-content?law_id=110
      *
      * @throws IOException
      */
     public List<IntegralFields> listByLawId(long lawId, Integer size, String[] fields) {
         SearchRequest searchRequest = new SearchRequest(INDEX__LAW_PROVISION);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId)));
+        /** termQuery 不会分词，最小单位匹配， 不能用于全匹配 */
+        //searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId)));
+        searchSourceBuilder.query(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId));
 
         searchSourceBuilder.sort(IntegralFields.TITLE_NUMBER + ".keyword", SortOrder.ASC);
-        return this.doSearch(size, fields, searchRequest, searchSourceBuilder);
+        return this.searchToList(size, fields,
+                new String[]{ IntegralFields.TERM_TEXT, IntegralFields.LAW_NAME },
+                searchRequest, searchSourceBuilder);
     }
 
     /**
@@ -437,7 +444,7 @@ public class ElasticSearchPortal {
      * @param searchSourceBuilder
      * @return
      */
-    private List<IntegralFields> doSearch(Integer size, String[] fields, SearchRequest searchRequest, SearchSourceBuilder searchSourceBuilder) {
+    private List<IntegralFields> searchToList(Integer size, String[] fields, String[] highlightFields, SearchRequest searchRequest, SearchSourceBuilder searchSourceBuilder) {
         if (ArrayUtil.isNotEmpty(fields)) {
             //只查询特定字段。如果需要查询所有字段则不设置该项。
             searchSourceBuilder.fetchSource(new FetchSourceContext(true, fields, Strings.EMPTY_ARRAY));
@@ -447,14 +454,7 @@ public class ElasticSearchPortal {
             searchSourceBuilder.size(size);
         }
 
-        searchRequest.source(searchSourceBuilder);
-        SearchResponse response;
-        try {
-            response = client.search(searchRequest, RequestOptions.DEFAULT);
-        } catch (IOException e) {
-            logger.error("", e);
-            throw new IllegalStateException(e);
-        }
+        SearchResponse response = this.doEsSearch(highlightFields, searchSourceBuilder, searchRequest);
 
         if (response.status().getStatus() == 200) {
             ArrayList<IntegralFields> list = new ArrayList<>();
@@ -478,8 +478,8 @@ public class ElasticSearchPortal {
      * @return
      * @throws IOException
      */
-    public List<IntegralFields> searchByPage(String indexName, int pageNum, int pageSize, String[] fields, String highlightField,
-                                             String sortField, SearchSourceBuilder condition) {
+    public LawSearchHits searchByPage(String indexName, int pageNum, int pageSize, String[] fields, String[] highlightFields,
+                                      String sortField, SearchSourceBuilder condition) {
         SearchRequest request = new SearchRequest(indexName);
         if (ArrayUtil.isNotEmpty(fields)) {
             //只查询特定字段。如果需要查询所有字段则不设置该项。
@@ -496,9 +496,36 @@ public class ElasticSearchPortal {
             //排序字段，注意如果proposal_no是text类型会默认带有keyword性质，需要拼接.keyword
             condition.sort(sortField + ".keyword", SortOrder.ASC);
         }
+
+        SearchResponse response = this.doEsSearch(highlightFields, condition, request);
+
+        logger.info("==" + response.getHits().getTotalHits());
+        if (response.status().getStatus() == 200) {
+            // 解析对象
+            LawSearchHits highlightSearchHits = setSearchResponse(response, highlightFields);
+            highlightSearchHits.setPageNum(pageNum);
+            highlightSearchHits.setPageSize(pageSize);
+            return highlightSearchHits;
+        }
+        return null;
+    }
+
+    /**
+     *
+     * @param highlightFields
+     * @param condition
+     * @param request
+     * @return
+     */
+    private SearchResponse doEsSearch(String[] highlightFields, SearchSourceBuilder condition, SearchRequest request) {
         //高亮
         HighlightBuilder highlight = new HighlightBuilder();
-        highlight.field(highlightField);
+        if (highlightFields != null) {
+            for (String field : highlightFields) {
+                highlight.field(field);
+            }
+        }
+
         //highlight.field(StrUtil.toCamelCase(IntegralProvision.LAW_NAME));
         //highlight.field(IntegralProvision.SUBTITLE);
         //highlight.field(IntegralProvision.TITLE);
@@ -519,13 +546,7 @@ public class ElasticSearchPortal {
             logger.error("", e);
             throw new IllegalStateException(e);
         }
-
-        logger.info("==" + response.getHits().getTotalHits());
-        if (response.status().getStatus() == 200) {
-            // 解析对象
-            return setSearchResponse(response, highlightField);
-        }
-        return null;
+        return response;
     }
 
 
@@ -534,96 +555,60 @@ public class ElasticSearchPortal {
      * map转对象 JSONObject.parseObject(JSONObject.toJSONString(map), Content.class)
      *
      * @param searchResponse
-     * @param highlightField
+     * @param highlightFields
      */
-    private List<IntegralFields> setSearchResponse(SearchResponse searchResponse, String highlightField) {
+    private LawSearchHits setSearchResponse(SearchResponse searchResponse, String[] highlightFields) {
+        LawSearchHits highlightSearchHits = new LawSearchHits();
+
+        long totalHitsCount = searchResponse.getHits().getTotalHits().value;
+
+        SearchHit[] searchHits = searchResponse.getHits().getHits();
         //解析结果
         ArrayList<IntegralFields> list = new ArrayList<>();
-        for (SearchHit hit : searchResponse.getHits().getHits()) {
+        for (SearchHit hit : searchHits) {
             Map<String, HighlightField> high = hit.getHighlightFields();
-            HighlightField title = high.get(highlightField);
+
             //原来的结果
             Map<String, Object> sourceAsMap = hit.getSourceAsMap();
 
-            //解析高亮字段,将原来的字段换为高亮字段
-            if (title != null) {
-                Text[] texts = title.fragments();
-                String nTitle = "";
-                for (Text text : texts) {
-                    nTitle += text;
+            for(String highlightField : highlightFields) {
+                HighlightField field = high.get(highlightField);
+
+                //解析高亮字段,将原来的字段换为高亮字段
+                if (field != null) {
+                    Text[] texts = field.fragments();
+                    String nTitle = "";
+                    for (Text text : texts) {
+                        nTitle += text;
+                    }
+                    //替换
+                    sourceAsMap.put(highlightField, nTitle);
                 }
-                //替换
-                sourceAsMap.put(highlightField, nTitle);
             }
 
             String mapStr = JSONUtil.toJsonStr(sourceAsMap);
             IntegralFields provision = JSONUtil.toBean(mapStr, IntegralFields.class);
             list.add(provision);
         }
-        return list;
+
+        highlightSearchHits.setTotal(totalHitsCount);
+        highlightSearchHits.setSearchHits(list);
+        return highlightSearchHits;
     }
 
-
     /**
-     * 构造 elasticsearch 查询条件
-     *
+     * 构造查询条件
+     * @param indexName
      * @param condition
      * @return
      */
-    public SearchSourceBuilder mustConditions(IntegralFields condition, Date[] publishRange, Date[] validFromRange) {
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-
-        String lawName = condition.getLawName();
-        if (StrUtil.isNotBlank(lawName)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_NAME, lawName));
+    public SearchSourceBuilder mustConditions(String indexName, EsFields condition) {
+        AbstractEsSrv esSrv = srvMap.get(indexName);
+        if(esSrv == null) {
+            throw new IllegalStateException("No es srv found");
         }
 
-        String lawLevel = condition.getLawLevel();
-        if (StrUtil.isNotBlank(lawLevel)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_LEVEL, lawLevel));
-        }
-
-        String title = condition.getTitle();
-        if (StrUtil.isNotBlank(title)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TITLE, title));
-        }
-
-        Integer status = condition.getStatus();
-        if (status != null) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.STATUS, status));
-        }
-
-        if (publishRange != null && publishRange.length == 2) {
-            RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery(IntegralFields.PUBLISH).timeZone("GMT+8");
-            makeRangeQueryBuilder(publishRange, rangeQueryBuilder);
-            boolQueryBuilder.must(rangeQueryBuilder);
-        }
-
-        if (validFromRange != null && validFromRange.length == 2) {
-            RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery(IntegralFields.VALID_FROM).timeZone("GMT+8");
-            makeRangeQueryBuilder(validFromRange, rangeQueryBuilder);
-            boolQueryBuilder.must(rangeQueryBuilder);
-        }
-
-        String termText = condition.getTermText();
-        if (StrUtil.isNotBlank(termText)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TERM_TEXT, termText));
-        }
-
-        searchSourceBuilder.query(boolQueryBuilder);
-        return searchSourceBuilder;
+        return esSrv.mustConditions(condition);
     }
 
-    private void makeRangeQueryBuilder(Date[] publishRange, RangeQueryBuilder rangeQueryBuilder) {
-        Date begin = publishRange[0];
-        if (begin != null) {
-            rangeQueryBuilder.gte(begin);
-        }
-
-        Date end = publishRange[1];
-        if (end != null) {
-            rangeQueryBuilder.lte(end);
-        }
-    }
 }

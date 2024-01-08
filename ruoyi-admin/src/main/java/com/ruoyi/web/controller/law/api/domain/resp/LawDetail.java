@@ -7,7 +7,7 @@ package com.ruoyi.web.controller.law.api.domain.resp;
  */
 public class LawDetail {
 
-    private Long id;
+    private String id;
     private String level;
     private String authority;
     private String publishAt;
@@ -18,12 +18,11 @@ public class LawDetail {
     private String title;
     private String content;
 
-
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

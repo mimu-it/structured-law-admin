@@ -19,7 +19,7 @@ public interface SlLawMapper
      * 获取制定机关选项
      * @return
      */
-    List<String> listAuthority();
+    List<SlLaw> listAuthority();
 
     /**
      * 获取状态选项

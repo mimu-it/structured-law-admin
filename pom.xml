@@ -33,11 +33,20 @@
         <hutool.version>5.7.22</hutool.version>
         <!-- elasticsearch.version>7.17.16</elasticsearch.version -->
         <elasticsearch.version>7.7.0</elasticsearch.version>
+        <!--mysql-connector.version>8.0.29</mysql-connector.version-->
+        <mysql-connector.version>5.1.49</mysql-connector.version>
     </properties>
 
     <!-- 依赖声明 -->
     <dependencyManagement>
         <dependencies>
+            <!-- Mysql驱动包 -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${mysql-connector.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>cn.hutool</groupId>
                 <artifactId>hutool-all</artifactId>

@@ -14,6 +14,7 @@ import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.utils.TempCachedCall;
 import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.domain.SlLawCategory;
+import com.ruoyi.system.domain.SlLawProvision;
 import com.ruoyi.system.service.ISlLawCategoryService;
 import com.ruoyi.system.service.ISlLawService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -63,7 +64,7 @@ public class SlLawController extends BaseController
             validFromDateStrArray = JSONUtil.toList(validFromDateStr, String.class).toArray(new String[0]);
         }
 
-        List<SlLaw> list = slLawService.selectSlLawListForSearch(categoryId, name, publishDateStrArray, validFromDateStrArray);
+        Page<SlLaw> list = (Page<SlLaw>) slLawService.selectSlLawListForSearch(categoryId, name, publishDateStrArray, validFromDateStrArray);
 
         List<Map<String, Object>> mapList = new ArrayList<>(list.size());
 
@@ -91,7 +92,7 @@ public class SlLawController extends BaseController
         newPage.clear();
         newPage.addAll(mapList);
 
-        return getDataTable(mapList);
+        return getDataTable(newPage);
     }
 
     /**

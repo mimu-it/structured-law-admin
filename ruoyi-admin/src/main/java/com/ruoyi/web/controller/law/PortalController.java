@@ -1,20 +1,20 @@
 package com.ruoyi.web.controller.law;
 
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
-import com.github.pagehelper.Page;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.common.core.redis.RedisCache;
-import com.ruoyi.common.utils.spring.SpringUtils;
-import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
+import com.ruoyi.web.controller.law.api.domain.resp.LawDetail;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchConditionOptions;
+import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHitsGroup;
+import com.ruoyi.web.controller.law.cache.LawCache;
 import com.ruoyi.web.controller.law.srv.ElasticSearchPortal;
-import com.ruoyi.web.controller.law.srv.PortalSrv;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +29,10 @@ import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * @author xiao.hu
@@ -47,7 +48,7 @@ public class PortalController extends BaseController {
     private static final String LOCK_ID_PARSE_MD = "redis_lock_for_parse_md";
 
     @Resource
-    private PortalSrv portalSrv;
+    private LawCache lawCache;
 
     @Resource
     private ElasticSearchPortal elasticSearchSrv;
@@ -86,9 +87,125 @@ public class PortalController extends BaseController {
     }
 
     /**
+     * http://localhost:8080/structured-law/portal/wild-search?page_num=2&page_size=10&publish=[%221990-01-01%22,%221995-01-01%22]&status=5
+     *
+     * http://localhost:8080/structured-law/portal/wild-search?page_num=2&page_size=10&status=5&law_level=司法解释
+     * @param pageNum
+     * @param pageSize
+     * @param lawName
+     * @param title
+     * @param termText
+     * @param documentNoMulti
+     * @param publishRange
+     * @param validFromRange
+     * @param status
+     * @param level
+     * @param authority
+     * @param authorityProvince
+     * @param authorityCity
+     * @param authorityDistrict
+     * @return
+     */
+    @GetMapping("/wild-search")
+    public AjaxResult wildSearch(@RequestParam(Constants.PAGE_NUM) int pageNum,
+                                 @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                                 @RequestParam(value=IntegralFields.LAW_NAME, required = false) String lawName,
+                                 @RequestParam(value=IntegralFields.TITLE, required = false) String title,
+                                 @RequestParam(value=IntegralFields.TERM_TEXT, required = false) String termText,
+                                 @RequestParam(value=IntegralFields.DOCUMENT_NO, required = false) String documentNoMulti,
+                                 @RequestParam(value=IntegralFields.PUBLISH, required = false) String publishRange,
+                                 @RequestParam(value=IntegralFields.VALID_FROM, required = false) String validFromRange,
+                                 @RequestParam(value=IntegralFields.STATUS, required = false) Integer status,
+                                 @RequestParam(value=IntegralFields.LAW_LEVEL, required = false) String level,
+                                 @RequestParam(value=IntegralFields.AUTHORITY, required = false) String authority,
+                                 @RequestParam(value=IntegralFields.AUTHORITY_PROVINCE, required = false) String authorityProvince,
+                                 @RequestParam(value=IntegralFields.AUTHORITY_CITY, required = false) String authorityCity,
+                                 @RequestParam(value=IntegralFields.AUTHORITY_DISTRICT, required = false) String authorityDistrict) {
+        IntegralFields integralFields = new IntegralFields();
+        if(StrUtil.isNotBlank(lawName)) {
+            integralFields.setLawName(lawName);
+        }
+
+        if(StrUtil.isNotBlank(title)) {
+            integralFields.setTitle(title);
+        }
+
+        if(StrUtil.isNotBlank(termText)) {
+            integralFields.setTermText(termText);
+        }
+
+        if(StrUtil.isNotBlank(documentNoMulti)) {
+            String[] documentNoMultiStrArray = JSONUtil.toList(documentNoMulti, String.class).toArray(new String[0]);
+            integralFields.setDocumentNoArray(documentNoMultiStrArray);
+        }
+
+        if(StrUtil.isNotBlank(publishRange)) {
+            integralFields.setPublishRange(publishRange);
+        }
+
+        if(StrUtil.isNotBlank(validFromRange)) {
+            integralFields.setPublishRange(validFromRange);
+        }
+
+        if(status != null) {
+            integralFields.setStatus(status);
+        }
+
+        if(StrUtil.isNotBlank(level)) {
+            integralFields.setLawLevel(level);
+        }
+
+        if(StrUtil.isNotBlank(authority)) {
+            integralFields.setAuthority(authority);
+        }
+
+        if(StrUtil.isNotBlank(authorityProvince)) {
+            integralFields.setAuthorityProvince(authorityProvince);
+        }
+
+        if(StrUtil.isNotBlank(authorityCity)) {
+            integralFields.setAuthorityCity(authorityCity);
+        }
+
+        if(StrUtil.isNotBlank(authorityDistrict)) {
+            integralFields.setAuthorityDistrict(authorityDistrict);
+        }
+
+        SearchSourceBuilder searchSourceBuilderOfLaw = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW, integralFields);
+        LawSearchHits matchLawHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW,
+                pageNum, pageSize, null,
+                new String[]{ IntegralFields.LAW_NAME }, null, searchSourceBuilderOfLaw);
+
+
+        LawSearchHits matchProvisionHits = null;
+        if (StrUtil.isNotBlank(integralFields.getTermText())) {
+            SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_PROVISION, integralFields);
+            matchProvisionHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
+                    pageNum, pageSize, null,
+                    new String[]{ IntegralFields.TERM_TEXT }, IntegralFields.TITLE_NUMBER, searchSourceBuilderOfProvision);
+        }
+
+
+        LawSearchHits matchAssociatedFileHits = null;
+        if (StrUtil.isNotBlank(integralFields.getTermText())) {
+            SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, integralFields);
+            matchAssociatedFileHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
+                    pageNum, pageSize, null,
+                    new String[]{ IntegralFields.CONTENT_TEXT }, null, searchSourceBuilderOfProvision);
+        }
+
+        Map<String, LawSearchHits> map = new HashMap<>();
+        map.put(ElasticSearchPortal.INDEX__LAW, matchLawHits);
+        map.put(ElasticSearchPortal.INDEX__LAW_PROVISION, matchProvisionHits);
+        map.put(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, matchAssociatedFileHits);
+        return success(map);
+    }
+
+
+    /**
      * 使用 elasticsearch 搜索条款
      *
-     * http://localhost:8080/structured-law/portal/search?pageNum=1&&condition={termText:"全国"}
+     * http://localhost:8080/structured-law/portal/search?page_num=1&&condition={termText:"全国"}
      *
      * @param pageNum
      * @param condition
@@ -98,18 +215,15 @@ public class PortalController extends BaseController {
     public AjaxResult searchLawProvision(@RequestParam(Constants.PAGE_NUM) int pageNum,
                              @RequestParam(Constants.PAGE_SIZE) int pageSize,
                              @RequestParam(Constants.CONDITION) String condition) {
-        if(pageNum < 1) {
-            pageNum = 1;
-        }
+        pageNum = pageNum < 1 ? 1:pageNum;
 
         IntegralFields integralProvision = JSONUtil.toBean(condition, IntegralFields.class);
 
-        String[] fields = null;
-        SearchSourceBuilder searchSourceBuilder = elasticSearchSrv.mustConditions(integralProvision, null, null);
-        List<IntegralFields> matchList = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
-                pageNum, pageSize, fields,
-                IntegralFields.TERM_TEXT, IntegralFields.TITLE_NUMBER, searchSourceBuilder);
-        return success(matchList);
+        SearchSourceBuilder searchSourceBuilder = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_PROVISION, integralProvision);
+        LawSearchHits matchHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
+                pageNum, pageSize, null,
+                new String[]{ IntegralFields.TERM_TEXT }, IntegralFields.TITLE_NUMBER, searchSourceBuilder);
+        return success(matchHits);
     }
 
     /**
@@ -123,22 +237,21 @@ public class PortalController extends BaseController {
     public AjaxResult searchLaw(@RequestParam(Constants.PAGE_NUM) int pageNum,
                                 @RequestParam(Constants.PAGE_SIZE) int pageSize,
                                 @RequestParam(Constants.CONDITION) String condition) {
-        if(pageNum < 1) {
-            pageNum = 1;
-        }
+        pageNum = pageNum < 1 ? 1:pageNum;
 
         IntegralFields integralProvision = JSONUtil.toBean(condition, IntegralFields.class);
 
-        String[] fields = null;
-        SearchSourceBuilder searchSourceBuilder = elasticSearchSrv.mustConditions(integralProvision, null, null);
-        List<IntegralFields> matchList = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW,
-                pageNum, pageSize, fields,
-                IntegralFields.TERM_TEXT, null, searchSourceBuilder);
-        return success(matchList);
+        SearchSourceBuilder searchSourceBuilder = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW, integralProvision);
+        LawSearchHits matchHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW,
+                pageNum, pageSize, null,
+                new String[] { IntegralFields.TERM_TEXT }, null, searchSourceBuilder);
+        return success(matchHits);
     }
 
     /**
      * 获取法律详情
+     * http://localhost:8080/structured-law/portal/law-content?law_id=110
+     *
      * @param lawId
      * @param size
      * @return
@@ -166,6 +279,38 @@ public class PortalController extends BaseController {
                 IntegralFields.TERM_TEXT
         });
 
+        StringBuilder sb = this.joinAllProvisions(matchList);
+
+        IntegralFields matchedItem = matchOne.get(0);
+        matchedItem.setContentText(sb.toString());
+
+        LawDetail lawDetail = new LawDetail();
+        lawDetail.setId(matchedItem.getEsDocId());
+        lawDetail.setAccording("");
+        lawDetail.setAuthority(matchedItem.getAuthority());
+        lawDetail.setContent(matchedItem.getContentText());
+        lawDetail.setDocumentNo(matchedItem.getDocumentNo());
+        lawDetail.setLevel(matchedItem.getLawLevel());
+        if(matchedItem.getPublish() != null) {
+            lawDetail.setPublishAt(DateUtil.format(matchedItem.getPublish(), "yyyy-MM-dd"));
+        }
+
+        lawDetail.setStatus(String.valueOf(matchedItem.getStatus()));
+        lawDetail.setTitle(matchedItem.getLawName());
+
+        if(matchedItem.getValidFrom() != null) {
+            lawDetail.setValidFrom(DateUtil.format(matchedItem.getValidFrom(), "yyyy-MM-dd"));
+        }
+
+        return success(lawDetail);
+    }
+
+    /**
+     * 把所有的条款合并到一起组合成正文
+     * @param matchList
+     * @return
+     */
+    private StringBuilder joinAllProvisions(List<IntegralFields> matchList) {
         StringBuilder sb = new StringBuilder();
         for(IntegralFields provision : matchList) {
             String title = provision.getTitle();
@@ -175,15 +320,12 @@ public class PortalController extends BaseController {
             }
             sb.append(title).append(" ").append(provision.getTermText()).append("\n");
         }
-
-        matchOne.get(0).setContentText(sb.toString());
-
-        return success(matchOne.get(0));
+        return sb;
     }
 
 
     /**
-     *
+     * 检索某个法律的历史
      * @param lawName
      * @param size
      * @return
@@ -206,20 +348,68 @@ public class PortalController extends BaseController {
      */
     @GetMapping("/conditionsOptions")
     public AjaxResult conditionsOptions() {
-        RedisCache redisCache = SpringUtils.getBean(RedisCache.class);
-        List<String> lawTypeOptions = redisCache.getCacheObject(PortalSrv.getConditionOptionsCacheKey(SlLaw.LAW_LEVEL));
-        List<String> authorityOptions = redisCache.getCacheObject(PortalSrv.getConditionOptionsCacheKey(SlLaw.AUTHORITY));
-        List<Integer> statusList = redisCache.getCacheObject(PortalSrv.getConditionOptionsCacheKey(SlLaw.STATUS));
-        List<String> statusOptions = statusList.stream().map((statusNumber) -> String.valueOf(statusNumber)).collect(Collectors.toList());
-
         LawSearchConditionOptions options = new LawSearchConditionOptions();
-        options.setLevelOptions(lawTypeOptions);
-        options.setAuthorityOptions(authorityOptions);
-        options.setStatusOptions(statusOptions);
+        options.setLevelOptions(lawCache.getLawLevelOptions());
+        options.setAuthorityOptions(lawCache.getAuthorityOptions());
+        options.setStatusOptions(lawCache.getStatusOptions());
 
         //collect_status 不知对应什么
         return success(options);
     }
+
+    /**
+     * 如果未限定level，就分组查询
+     * 限定了level,就按指定级别查询
+     *
+     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&authority=全国人民代表大会常务委员会
+     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&authority=全国人民代表大会常务委员会&law_level=%E6%B3%95%E5%BE%8B%E8%A7%A3%E9%87%8A
+     *
+     * @param pageNum
+     * @param pageSize
+     * @param lawLevel
+     * @param authority
+     * @return
+     */
+    @GetMapping("/group/search-law")
+    public AjaxResult searchGroupByLawLevel(@RequestParam(Constants.PAGE_NUM) int pageNum,
+                                            @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                                            @RequestParam(value=IntegralFields.LAW_LEVEL, required = false) String lawLevel,
+                                            @RequestParam(value=IntegralFields.AUTHORITY, required = false) String authority) {
+        LawSearchHitsGroup lawSearchHitsGroup = new LawSearchHitsGroup();
+
+        IntegralFields integralFields = new IntegralFields();
+        integralFields.setAuthority(authority);
+
+        if(StrUtil.isBlank(lawLevel)) {
+            List<String> levelList = lawCache.getLawLevelOptions();
+            for(String level : levelList) {
+                integralFields.setLawLevel(level);
+                SearchSourceBuilder searchSourceBuilderOfLaw = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW, integralFields);
+                LawSearchHits matchLawHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW,
+                        pageNum, pageSize, null,
+                        new String[]{ IntegralFields.LAW_NAME }, null, searchSourceBuilderOfLaw);
+                lawSearchHitsGroup.putLaw(level, matchLawHits);
+            }
+        }
+        else {
+            integralFields.setLawLevel(lawLevel);
+            SearchSourceBuilder searchSourceBuilderOfLaw = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW, integralFields);
+            LawSearchHits matchLawHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW,
+                    pageNum, pageSize, null,
+                    new String[]{ IntegralFields.LAW_NAME }, null, searchSourceBuilderOfLaw);
+            lawSearchHitsGroup.putLaw(lawLevel, matchLawHits);
+        }
+
+        integralFields.setLawLevel(null);
+        SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, integralFields);
+        LawSearchHits matchAssociatedFileHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
+                pageNum, pageSize, null,
+                new String[]{ IntegralFields.ASSOCIATED_FILE_NAME }, null, searchSourceBuilderOfProvision);
+        lawSearchHitsGroup.setAssociateFile(matchAssociatedFileHits);
+        return success(lawSearchHitsGroup);
+    }
+
+
 
     /**
      * 把mysql中的数据导入到elasticsearch

@@ -23,7 +23,7 @@ public class SlLawServiceImpl implements ISlLawService
 
 
     @Override
-    public List<String> listAuthority() {
+    public List<SlLaw> listAuthority() {
         return slLawMapper.listAuthority();
     }
 

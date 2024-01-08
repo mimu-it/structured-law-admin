@@ -120,6 +120,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
                         "/structured-law/portal/suggest-multi",
                         "/structured-law/portal/law-content",
                         "/structured-law/portal/law-history",
+                        "/structured-law/portal/wild-search",
+                        "/structured-law/portal/group/search-law",
                         "/structured-law/portal/conditionsOptions").permitAll()
                 // 静态资源，可匿名访问
                 .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**").permitAll()

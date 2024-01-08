@@ -1,9 +1,14 @@
 package com.ruoyi.web.controller.law.srv.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.Page;
+import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
-import com.ruoyi.web.controller.law.srv.EsSrv;
+import com.ruoyi.web.controller.law.srv.AbstractEsSrv;
 import com.ruoyi.web.controller.law.srv.PortalSrv;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,7 +25,7 @@ import java.nio.file.Files;
  * @apiNote
  */
 @Service
-public class EsLawProvisionSrv extends EsSrv {
+public class EsLawProvisionSrv extends AbstractEsSrv {
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Resource
@@ -50,5 +55,31 @@ public class EsLawProvisionSrv extends EsSrv {
     @Override
     public Page<IntegralFields> listDataByPage(int pageNum, int pageSize) {
         return portalSrv.listProvisionByPage(pageNum, pageSize);
+    }
+
+    /**
+     * 构造查询条件
+     * @param esFields
+     * @return
+     */
+    @Override
+    public SearchSourceBuilder mustConditions(EsFields esFields) {
+        IntegralFields condition = (IntegralFields) esFields;
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        BoolQueryBuilder boolQueryBuilder = super.makeCommonBoolQueryBuilder(condition);
+
+        String title = condition.getTitle();
+        if (StrUtil.isNotBlank(title)) {
+            boolQueryBuilder.must(QueryBuilders.matchQuery(IntegralFields.TITLE, title));
+        }
+
+        String termText = condition.getTermText();
+        if (StrUtil.isNotBlank(termText)) {
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TERM_TEXT, termText));
+        }
+
+        searchSourceBuilder.query(boolQueryBuilder);
+        return searchSourceBuilder;
     }
 }

@@ -72,8 +72,8 @@ public class SlLawCategoryServiceImpl implements ISlLawCategoryService
      * @return
      */
     @Override
-    public List<String> listLawType() {
-        return slLawCategoryMapper.listLawType();
+    public List<String> listLawLevel() {
+        return slLawCategoryMapper.listLawLevel();
     }
 
 
