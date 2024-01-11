@@ -2,15 +2,14 @@
 spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
-    # driverClassName: com.mysql.cj.jdbc.Driver
     driverClassName: com.mysql.jdbc.Driver
     druid:
       # 主库数据源
       master:
         # 将serverTimezone设置为GMT%2B8，(GMT为格林尼治标准时间，即本初子午线的时间，GMT%2B8表示GMT加上8小时 就是北京时间)
-        url: jdbc:mysql://localhost:3310/structured_law?&useLegacyDatetimeCode=false&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8
+        url: jdbc:mysql://192.168.150.59:3306/structured_law?&useLegacyDatetimeCode=false&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8
         username: root
-        password: 123456
+        password: wsysql@Bigdata1
       # 从库数据源
       slave:
         # 从数据源开关/默认关闭
@@ -64,13 +63,13 @@ spring:
   # redis 配置
   redis:
     # 地址
-    host: localhost
+    host: 192.168.150.58
     # 端口，默认为6379
     port: 6379
     # 数据库索引，选择最后一个，每个独立实例应该配置不同的索引避免冲突
     database: 15
     # 密码
-    password:
+    password: redis@123.com
     # 连接超时时间
     timeout: 10s
     lettuce:
@@ -87,14 +86,14 @@ spring:
   devtools:
     restart:
       # 热部署开关
-      enabled: true
+      enabled: false
   elasticsearch:
-    uri: localhost
+    uri: 192.168.150.71
     port: 9200
 
 ruoyi:
   # 文件路径 示例（ Windows配置D:/ruoyi/uploadPath，Linux配置 /home/ruoyi/uploadPath）
-  profile: /Volumes/HD-FOR-MAC/DEV_ENV/upload_space/structured-law
+  profile: /root/structured-law/upload
 
 # 开发环境配置
 server:
@@ -118,18 +117,19 @@ server:
 # 日志配置
 logging:
   level:
-    com.ruoyi: debug
+    com.ruoyi: info
     org.springframework: warn
+
 
 # Swagger配置
 swagger:
   # 是否开启swagger
-  enabled: true
+  enabled: false
   # 请求前缀
   pathMapping: /dev-api
 
 backup:
-  path: /Volumes/HD-FOR-MAC/DEV_ENV/upload_space/structured-law/backup
+  path: /root/structured-law/backup
 
 
 law:

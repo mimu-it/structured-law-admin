@@ -10,6 +10,11 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.springframework.core.io.ClassPathResource;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 /**
  * @author xiao.hu
@@ -38,6 +43,26 @@ public abstract class AbstractEsSrv {
      * @return
      */
     public abstract SearchSourceBuilder mustConditions(EsFields condition);
+
+
+    /**
+     * 读取jar包中的配置文件
+     * @param filePath
+     * @return
+     * @throws IOException
+     */
+    protected String readConfig(String filePath) throws IOException {
+        ClassPathResource resource = new ClassPathResource(filePath);
+        BufferedReader JarUrlProcReader = new BufferedReader(new InputStreamReader(resource.getInputStream()));
+        StringBuilder buffer = new StringBuilder();
+
+        String JarUrlProcStr;
+        while((JarUrlProcStr = JarUrlProcReader.readLine()) != null) {
+            buffer.append(JarUrlProcStr);
+        }
+
+        return buffer.toString();
+    }
 
     /**
      *

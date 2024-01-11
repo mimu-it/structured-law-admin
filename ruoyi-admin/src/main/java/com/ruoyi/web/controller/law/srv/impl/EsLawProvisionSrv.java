@@ -38,8 +38,7 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
     @Override
     public String getMappingConfig() {
         try {
-            File file = ResourceUtils.getFile("classpath:elasticsearch/index_law_provision_mappings.json");
-            return new String(Files.readAllBytes(file.toPath()));
+            return super.readConfig("classpath:elasticsearch/index_law_provision_mappings.json");
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
@@ -71,7 +70,7 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
 
         String title = condition.getTitle();
         if (StrUtil.isNotBlank(title)) {
-            boolQueryBuilder.must(QueryBuilders.matchQuery(IntegralFields.TITLE, title));
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TITLE, title));
         }
 
         String termText = condition.getTermText();

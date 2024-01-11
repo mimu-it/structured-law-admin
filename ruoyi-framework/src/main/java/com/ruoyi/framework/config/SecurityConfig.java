@@ -121,6 +121,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
                         "/structured-law/portal/law-content",
                         "/structured-law/portal/law-history",
                         "/structured-law/portal/wild-search",
+                        "/structured-law/portal/wild-search-law",
+                        "/structured-law/portal/wild-search-provision",
+                        "/structured-law/portal/wild-search-associate",
                         "/structured-law/portal/group/search-law",
                         "/structured-law/portal/conditionsOptions").permitAll()
                 // 静态资源，可匿名访问

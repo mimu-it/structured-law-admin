@@ -486,9 +486,9 @@ public class ElasticSearchPortal {
             condition.fetchSource(new FetchSourceContext(true, fields, Strings.EMPTY_ARRAY));
         }
 
+        /** from 是从 0 开始的， 设置确定结果要从哪个索引开始搜索的from选项，默认为0 */
         int from = pageNum - 1;
         from = from <= 0 ? 0 : from * pageSize;
-        //设置确定结果要从哪个索引开始搜索的from选项，默认为0
         condition.from(from);
         condition.size(pageSize);
 
@@ -502,7 +502,7 @@ public class ElasticSearchPortal {
         logger.info("==" + response.getHits().getTotalHits());
         if (response.status().getStatus() == 200) {
             // 解析对象
-            LawSearchHits highlightSearchHits = setSearchResponse(response, highlightFields);
+            LawSearchHits highlightSearchHits = remakeSearchResponse(response, highlightFields);
             highlightSearchHits.setPageNum(pageNum);
             highlightSearchHits.setPageSize(pageSize);
             return highlightSearchHits;
@@ -525,10 +525,6 @@ public class ElasticSearchPortal {
                 highlight.field(field);
             }
         }
-
-        //highlight.field(StrUtil.toCamelCase(IntegralProvision.LAW_NAME));
-        //highlight.field(IntegralProvision.SUBTITLE);
-        //highlight.field(IntegralProvision.TITLE);
 
         //关闭多个高亮
         //highlight.requireFieldMatch(false);
@@ -557,7 +553,7 @@ public class ElasticSearchPortal {
      * @param searchResponse
      * @param highlightFields
      */
-    private LawSearchHits setSearchResponse(SearchResponse searchResponse, String[] highlightFields) {
+    private LawSearchHits remakeSearchResponse(SearchResponse searchResponse, String[] highlightFields) {
         LawSearchHits highlightSearchHits = new LawSearchHits();
 
         long totalHitsCount = searchResponse.getHits().getTotalHits().value;

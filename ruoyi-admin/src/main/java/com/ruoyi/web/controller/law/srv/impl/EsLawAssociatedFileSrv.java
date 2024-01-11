@@ -38,8 +38,7 @@ public class EsLawAssociatedFileSrv extends AbstractEsSrv {
     @Override
     public String getMappingConfig() {
         try {
-            File file = ResourceUtils.getFile("classpath:elasticsearch/index_law_associated_file_mappings.json");
-            return new String(Files.readAllBytes(file.toPath()));
+            return super.readConfig("classpath:elasticsearch/index_law_associated_file_mappings.json");
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
@@ -79,7 +78,8 @@ public class EsLawAssociatedFileSrv extends AbstractEsSrv {
 
         String termText = condition.getTermText();
         if (StrUtil.isNotBlank(termText)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.CONTENT_TEXT, termText));
+            /** 同时在 content_text 和 associated_file_name 查询内容 */
+            boolQueryBuilder.must(QueryBuilders.multiMatchQuery(termText, IntegralFields.CONTENT_TEXT, IntegralFields.ASSOCIATED_FILE_NAME));
         }
 
         searchSourceBuilder.query(boolQueryBuilder);

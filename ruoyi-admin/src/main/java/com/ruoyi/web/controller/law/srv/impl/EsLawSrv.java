@@ -11,12 +11,15 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 
 import javax.annotation.Resource;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 
 /**
@@ -38,8 +41,8 @@ public class EsLawSrv extends AbstractEsSrv {
     @Override
     public String getMappingConfig() {
         try {
-            File file = ResourceUtils.getFile("classpath:elasticsearch/index_law_mappings.json");
-            return new String(Files.readAllBytes(file.toPath()));
+            /** 此代码无法在打成jar包的时候使用 File file = ResourceUtils.getFile("classpath:elasticsearch/index_law_mappings.json"); */
+            return super.readConfig("elasticsearch/index_law_mappings.json");
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
