@@ -178,4 +178,10 @@ public class Constants
 
     public final static String TEXT = "text";
     public final static String FIELD = "field";
+
+    public final static String AUTHORITY_TREE = "authority_tree";
+
+    public final static String HITS = "hits";
+    public final static String HISTORY = "history";
+    public final static String ASSOCIATE = "associate";
 }

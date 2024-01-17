@@ -7,8 +7,13 @@
       "type": "long"
     },
     "associated_file_name": {
-      "type": "completion",
-      "analyzer": "ik_max_word"
+      "type": "text",
+      "analyzer": "ik_max_word",
+      "fields": {
+        "suggest": {
+          "type":"completion"
+        }
+      }
     },
     "document_type": {
       "type": "keyword"

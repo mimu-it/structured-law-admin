@@ -38,7 +38,7 @@ public class EsLawAssociatedFileSrv extends AbstractEsSrv {
     @Override
     public String getMappingConfig() {
         try {
-            return super.readConfig("classpath:elasticsearch/index_law_associated_file_mappings.json");
+            return super.readConfig(super.getResourcePathPrefix() + "elasticsearch/index_law_associated_file_mappings.json");
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
@@ -66,9 +66,19 @@ public class EsLawAssociatedFileSrv extends AbstractEsSrv {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
 
-        String authority = condition.getAuthority();
-        if (StrUtil.isNotBlank(authority)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.ASSOCIATED_FILE_NAME, authority));
+        String contentText = condition.getContentText();
+        if (StrUtil.isNotBlank(contentText)) {
+            boolQueryBuilder.must(QueryBuilders.matchQuery(IntegralFields.CONTENT_TEXT, contentText));
+        }
+
+        String documentType = condition.getDocumentType();
+        if (StrUtil.isNotBlank(documentType)) {
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.DOCUMENT_TYPE, documentType));
+        }
+
+        String associatedFileName = condition.getAssociatedFileName();
+        if (StrUtil.isNotBlank(associatedFileName)) {
+            boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(IntegralFields.ASSOCIATED_FILE_NAME, associatedFileName));
         }
 
         Long lawId = condition.getLawId();

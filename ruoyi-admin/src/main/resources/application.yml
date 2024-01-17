@@ -31,7 +31,7 @@ spring:
     active: prod
   jackson:
     # 响应不传null值属性
-    default-property-inclusion: non_null
+    # default-property-inclusion: non_null
     serialization:
       FAIL_ON_EMPTY_BEANS: false
   # 文件上传
@@ -76,5 +76,11 @@ xss:
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
 
+
+springfox:
+  documentation:
+    swagger:
+      v2:
+        use-model-v3: false
 
 

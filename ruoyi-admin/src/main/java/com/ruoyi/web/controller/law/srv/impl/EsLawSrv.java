@@ -42,7 +42,7 @@ public class EsLawSrv extends AbstractEsSrv {
     public String getMappingConfig() {
         try {
             /** 此代码无法在打成jar包的时候使用 File file = ResourceUtils.getFile("classpath:elasticsearch/index_law_mappings.json"); */
-            return super.readConfig("elasticsearch/index_law_mappings.json");
+            return super.readConfig(super.getResourcePathPrefix() + "elasticsearch/index_law_mappings.json");
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);

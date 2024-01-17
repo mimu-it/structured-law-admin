@@ -4,14 +4,24 @@
       "type": "long"
     },
     "law_name": {
-      "type": "completion",
-      "analyzer": "ik_max_word"
+      "type": "text",
+      "analyzer": "ik_max_word",
+      "fields": {
+        "suggest": {
+          "type":"completion"
+        }
+      }
     },
     "law_level": {
       "type": "keyword"
     },
     "authority": {
-      "type": "completion"
+      "type": "text",
+      "fields": {
+        "suggest": {
+          "type":"completion"
+        }
+      }
     },
     "authority_province": {
       "type": "keyword"

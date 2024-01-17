@@ -124,9 +124,9 @@ logging:
 # Swagger配置
 swagger:
   # 是否开启swagger
-  enabled: false
+  enabled: true
   # 请求前缀
-  pathMapping: /dev-api
+  pathMapping:
 
 backup:
   path: /Volumes/HD-FOR-MAC/DEV_ENV/upload_space/structured-law/backup

@@ -4,6 +4,7 @@ import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.Page;
+import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -15,6 +16,7 @@ import org.springframework.core.io.ClassPathResource;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
 
 /**
  * @author xiao.hu
@@ -44,6 +46,14 @@ public abstract class AbstractEsSrv {
      */
     public abstract SearchSourceBuilder mustConditions(EsFields condition);
 
+    /**
+     *
+     * @return
+     */
+    public String getResourcePathPrefix() {
+        String profile = SpringUtils.getActiveProfile();
+        return "prod".equals(profile)? "classpath:" : "";
+    }
 
     /**
      * 读取jar包中的配置文件
@@ -94,14 +104,37 @@ public abstract class AbstractEsSrv {
             boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.AUTHORITY, authority));
         }
 
+        String authorityProvince = condition.getAuthorityProvince();
+        if (StrUtil.isNotBlank(authorityProvince)) {
+            List<String> provinces = JSONUtil.toList(authorityProvince, String.class);
+            boolQueryBuilder.should(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_PROVINCE, provinces));
+        }
+
+        String authorityCity = condition.getAuthorityCity();
+        if (StrUtil.isNotBlank(authorityCity)) {
+            List<String> cities = JSONUtil.toList(authorityCity, String.class);
+            boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_CITY, cities));
+        }
+
+        String authorityDistrict = condition.getAuthorityDistrict();
+        if (StrUtil.isNotBlank(authorityDistrict)) {
+            List<String> districts = JSONUtil.toList(authorityDistrict, String.class);
+            boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_DISTRICT, districts));
+        }
+
         String lawName = condition.getLawName();
         if (StrUtil.isNotBlank(lawName)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_NAME, lawName));
+            boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
         }
 
         String lawLevel = condition.getLawLevel();
         if (StrUtil.isNotBlank(lawLevel)) {
             boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_LEVEL, lawLevel));
+        }
+
+        String documentType = condition.getDocumentType();
+        if (StrUtil.isNotBlank(documentType)) {
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.DOCUMENT_TYPE, documentType));
         }
 
         Integer status = condition.getStatus();

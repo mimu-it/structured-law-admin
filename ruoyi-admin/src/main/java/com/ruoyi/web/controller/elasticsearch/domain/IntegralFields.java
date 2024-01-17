@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.elasticsearch.domain;
 
 import java.util.Date;
+import java.util.Map;
 
 /**
  * @author xiao.hu
@@ -13,6 +14,7 @@ public class IntegralFields implements EsFields{
     private Long lawId;
     private Long provisionId;
     private Long associatedFileId;
+    private String lawNameOrigin;
     private String lawName;
     private String associatedFileName;
     private String subtitle;
@@ -275,6 +277,14 @@ public class IntegralFields implements EsFields{
         this.validFromRange = validFromRange;
     }
 
+    public String getLawNameOrigin() {
+        return lawNameOrigin;
+    }
+
+    public void setLawNameOrigin(String lawNameOrigin) {
+        this.lawNameOrigin = lawNameOrigin;
+    }
+
     public static final String LAW_ID = "law_id";
     public static final String PROVISION_ID = "provision_id";
     public static final String ASSOCIATED_FILE_ID = "associated_file_id";
@@ -296,6 +306,7 @@ public class IntegralFields implements EsFields{
     public static final String PREFACE = "preface";
     public static final String CONTENT_TEXT = "content_text";
     public static final String ASSOCIATED_FILE_NAME = "associated_file_name";
+    public static final String DOCUMENT_TYPE = "document_type";
 
 
     /*public static void main(String[] args) {

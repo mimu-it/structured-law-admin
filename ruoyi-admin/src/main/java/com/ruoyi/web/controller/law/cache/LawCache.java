@@ -1,17 +1,28 @@
 package com.ruoyi.web.controller.law.cache;
 
+import cn.hutool.core.lang.TypeReference;
+import cn.hutool.json.JSON;
+import cn.hutool.json.JSONUtil;
 import com.ruoyi.common.constant.CacheConstants;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.common.utils.file.JarFileReaderUtils;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.service.ISlLawCategoryService;
 import com.ruoyi.system.service.ISlLawService;
+import com.ruoyi.web.controller.law.api.domain.inner.AuthorityTreeNode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -51,6 +62,8 @@ public class LawCache {
         List<Integer> statusOptions = slLawService.listStatus();
         redisCache.setCacheObject(getConditionOptionsCacheKey(SlLaw.STATUS), statusOptions);
 
+        List<AuthorityTreeNode> authorityTree = this.initAuthorityTree();
+        redisCache.setCacheObject(getConditionOptionsCacheKey(Constants.AUTHORITY_TREE), authorityTree);
         //TODO 征集状态是啥
     }
 
@@ -88,6 +101,47 @@ public class LawCache {
     public List<String> getAuthorityOptions() {
         RedisCache redisCache = SpringUtils.getBean(RedisCache.class);
         return redisCache.getCacheObject(getConditionOptionsCacheKey(SlLaw.AUTHORITY));
+    }
+
+    /**
+     * 初始化制定机关的树
+     * @return
+     */
+    private List<AuthorityTreeNode> initAuthorityTree() {
+        try {
+            String configStr = readConfig("authority/tree.json");
+            return JSONUtil.toBean(configStr, new TypeReference<List<AuthorityTreeNode>>() {}, false);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * 读取制定机关的树
+     * @return
+     */
+    public List<AuthorityTreeNode> getAuthorityTree() {
+        RedisCache redisCache = SpringUtils.getBean(RedisCache.class);
+        return redisCache.getCacheObject(getConditionOptionsCacheKey(Constants.AUTHORITY_TREE));
+    }
+
+    /**
+     * 读取jar中的配置文件
+     * @param filePath
+     * @return
+     * @throws IOException
+     */
+    public static String readConfig(String filePath) throws IOException {
+        ClassPathResource resource = new ClassPathResource(filePath);
+        BufferedReader JarUrlProcReader = new BufferedReader(new InputStreamReader(resource.getInputStream()));
+        StringBuilder buffer = new StringBuilder();
+
+        String JarUrlProcStr;
+        while((JarUrlProcStr = JarUrlProcReader.readLine()) != null) {
+            buffer.append(JarUrlProcStr);
+        }
+
+        return buffer.toString();
     }
 
     /**

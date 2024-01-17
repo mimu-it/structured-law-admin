@@ -9,6 +9,7 @@ import cn.hutool.json.JSONUtil;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.domain.R;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.law.api.domain.resp.LawDetail;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchConditionOptions;
@@ -16,6 +17,7 @@ import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHitsGroup;
 import com.ruoyi.web.controller.law.cache.LawCache;
 import com.ruoyi.web.controller.law.srv.ElasticSearchPortal;
+import io.swagger.annotations.*;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +29,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.File;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,6 +41,7 @@ import java.util.regex.Pattern;
  * @date 2023-12-25
  * @apiNote
  */
+@Api("法派法库服务接口")
 @RestController
 @RequestMapping("/structured-law/portal")
 public class PortalController extends BaseController {
@@ -94,6 +94,12 @@ public class PortalController extends BaseController {
      * <p>
      * http://localhost:8080/structured-law/portal/wild-search-law?page_num=2&page_size=10&status=5&law_level=司法解释
      *
+     * http://localhost:8080/structured-law/portal/wild-search-law?page_num=1&page_size=10&law_name=中国
+     *
+     * http://localhost:8080/structured-law/portal/wild-search-law?page_num=1&page_size=10&law_name=国境河流外国籍船舶管理办法
+     *
+     * 若依框架后端使用的响应对象AjaxResult，和Swagger存在不兼容问题，导致返回体即使使用了Swagger注解，但是Swagger接口文档中，不显示返回体的对象Swagger文档
+     *
      * @param pageNum
      * @param pageSize
      * @param lawName
@@ -108,19 +114,34 @@ public class PortalController extends BaseController {
      * @param authorityDistrict
      * @return
      */
+    @ApiOperation(value="关键词查询法律")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = Constants.PAGE_NUM, value = "页码", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.PAGE_SIZE, value = "每页显示数量", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = IntegralFields.LAW_NAME, value = "法律名称", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.DOCUMENT_NO, value = "发布文号(eg. 中华人民共和国主席令（第十三号）)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.PUBLISH, value = "发布日期(eg. 1995-03-28)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.VALID_FROM, value = "执行日期(eg. 1995-03-28)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.STATUS, value = "状态(eg. 1, 5, 9)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.LAW_LEVEL, value = "效力级别(eg. 宪法、法律、地方性法规...)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY, value = "制定机关(eg. 最高人民法院、最高人民检察院...)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY_PROVINCE, value = "制定机关所在省(eg. 湖南省)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY_CITY, value = "制定机关所在市(eg. 长沙市)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY_DISTRICT, value = "制定机关所在区(eg. 开福区)", dataType = "String", dataTypeClass = String.class),
+    })
     @GetMapping("/wild-search-law")
-    public AjaxResult wildSearchLaw(@RequestParam(Constants.PAGE_NUM) int pageNum,
-                                    @RequestParam(Constants.PAGE_SIZE) int pageSize,
-                                    @RequestParam(value = IntegralFields.LAW_NAME, required = false) String lawName,
-                                    @RequestParam(value = IntegralFields.DOCUMENT_NO, required = false) String documentNoMulti,
-                                    @RequestParam(value = IntegralFields.PUBLISH, required = false) String publishRange,
-                                    @RequestParam(value = IntegralFields.VALID_FROM, required = false) String validFromRange,
-                                    @RequestParam(value = IntegralFields.STATUS, required = false) Integer status,
-                                    @RequestParam(value = IntegralFields.LAW_LEVEL, required = false) String level,
-                                    @RequestParam(value = IntegralFields.AUTHORITY, required = false) String authority,
-                                    @RequestParam(value = IntegralFields.AUTHORITY_PROVINCE, required = false) String authorityProvince,
-                                    @RequestParam(value = IntegralFields.AUTHORITY_CITY, required = false) String authorityCity,
-                                    @RequestParam(value = IntegralFields.AUTHORITY_DISTRICT, required = false) String authorityDistrict) {
+    public R<Map<String, Object>> wildSearchLaw(@RequestParam(Constants.PAGE_NUM) int pageNum,
+                            @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                            @RequestParam(value = IntegralFields.LAW_NAME, required = false) String lawName,
+                            @RequestParam(value = IntegralFields.DOCUMENT_NO, required = false) String documentNoMulti,
+                            @RequestParam(value = IntegralFields.PUBLISH, required = false) String publishRange,
+                            @RequestParam(value = IntegralFields.VALID_FROM, required = false) String validFromRange,
+                            @RequestParam(value = IntegralFields.STATUS, required = false) Integer status,
+                            @RequestParam(value = IntegralFields.LAW_LEVEL, required = false) String level,
+                            @RequestParam(value = IntegralFields.AUTHORITY, required = false) String authority,
+                            @RequestParam(value = IntegralFields.AUTHORITY_PROVINCE, required = false) String authorityProvince,
+                            @RequestParam(value = IntegralFields.AUTHORITY_CITY, required = false) String authorityCity,
+                            @RequestParam(value = IntegralFields.AUTHORITY_DISTRICT, required = false) String authorityDistrict) {
         IntegralFields integralFields = new IntegralFields();
         if (StrUtil.isNotBlank(lawName)) {
             integralFields.setLawName(lawName);
@@ -134,13 +155,53 @@ public class PortalController extends BaseController {
                 pageNum, pageSize, null,
                 new String[]{IntegralFields.LAW_NAME}, null, searchSourceBuilderOfLaw);
 
-        return success(matchLawHits);
+        Map<String, List<IntegralFields>> historyMap = this.makeLawHistoryInfo(matchLawHits);
+        Map<Long, List<IntegralFields>> associatedFileMap = this.makeAssociatedFileInfo(matchLawHits);
+
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put(Constants.HITS, matchLawHits);
+        resultMap.put(Constants.HISTORY, historyMap);
+        resultMap.put(Constants.ASSOCIATE, associatedFileMap);
+
+        return R.ok(resultMap);
+    }
+
+
+    /**
+     * 从查询出来的法律中对应找法律的历史
+     * @param matchLawHits
+     * @return
+     */
+    private Map<String, List<IntegralFields>> makeLawHistoryInfo(LawSearchHits matchLawHits) {
+        Map<String, List<IntegralFields>> map = new HashMap<>();
+        List<IntegralFields> hitsList = matchLawHits.getSearchHits();
+        Set<String> lawNameList = new HashSet<>();
+        for(IntegralFields fields : hitsList) {
+            lawNameList.add(fields.getLawNameOrigin());
+        }
+
+        for(String name : lawNameList) {
+            List<IntegralFields> matchHistoryList = elasticSearchSrv.listLawHistory(name, 1000, new String[]{
+                    IntegralFields.LAW_NAME,
+                    IntegralFields.PUBLISH,
+                    IntegralFields.VALID_FROM,
+                    IntegralFields.STATUS
+            });
+
+            if(!matchHistoryList.isEmpty()) {
+                map.put(name, matchHistoryList);
+            }
+        }
+
+        return map;
     }
 
 
     /**
      * http://localhost:8080/structured-law/portal/wild-search-provision?page_num=1&page_size=10&title=第四条
      * http://localhost:8080/structured-law/portal/wild-search-provision?page_num=1&page_size=10&title=第5条
+     *
+     * http://localhost:8080/structured-law/portal/wild-search-provision?page_num=1&page_size=10&law_name=中国&title=第5条
      *
      * @param pageNum
      * @param pageSize
@@ -158,8 +219,25 @@ public class PortalController extends BaseController {
      * @param authorityDistrict
      * @return
      */
+    @ApiOperation(value="关键词查询法律条款")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = Constants.PAGE_NUM, value = "页码", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.PAGE_SIZE, value = "每页显示数量", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = IntegralFields.LAW_NAME, value = "法律名称", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.TITLE, value = "法条小标题(eg. 第十二条)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.TERM_TEXT, value = "法条正文", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.DOCUMENT_NO, value = "发布文号(eg. 中华人民共和国主席令（第十三号）)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.PUBLISH, value = "发布日期(eg. 1995-03-28)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.VALID_FROM, value = "执行日期(eg. 1995-03-28)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.STATUS, value = "状态(eg. 1, 5, 9)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.LAW_LEVEL, value = "效力级别(eg. 宪法、法律、地方性法规...)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY, value = "制定机关(eg. 最高人民法院、最高人民检察院...)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY_PROVINCE, value = "制定机关所在省(eg. 湖南省)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY_CITY, value = "制定机关所在市(eg. 长沙市)", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY_DISTRICT, value = "制定机关所在区(eg. 开福区)", dataType = "String", dataTypeClass = String.class),
+    })
     @GetMapping("/wild-search-provision")
-    public AjaxResult wildSearchLawProvision(@RequestParam(Constants.PAGE_NUM) int pageNum,
+    public R<Map<String, Object>> wildSearchLawProvision(@RequestParam(Constants.PAGE_NUM) int pageNum,
                                     @RequestParam(Constants.PAGE_SIZE) int pageSize,
                                     @RequestParam(value = IntegralFields.LAW_NAME, required = false) String lawName,
                                     @RequestParam(value = IntegralFields.TITLE, required = false) String title,
@@ -200,29 +278,58 @@ public class PortalController extends BaseController {
                 pageNum, pageSize, null,
                 new String[]{IntegralFields.TERM_TEXT}, IntegralFields.TITLE_NUMBER, searchSourceBuilderOfProvision);
 
-        return success(matchProvisionHits);
+        Map<String, List<IntegralFields>> historyMap = this.makeLawHistoryInfo(matchProvisionHits);
+        Map<Long, List<IntegralFields>> associatedFileMap = this.makeAssociatedFileInfo(matchProvisionHits);
+
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put(Constants.HITS, matchProvisionHits);
+        resultMap.put(Constants.HISTORY, historyMap);
+        resultMap.put(Constants.ASSOCIATE, associatedFileMap);
+
+        return R.ok(resultMap);
     }
 
     /**
-     * http://localhost:8080/structured-law/portal/wild-search-associate?page_num=1&page_size=10&law_id=8&term_text=草案
+     * http://localhost:8080/structured-law/portal/wild-search-associate?page_num=1&page_size=10&law_id=8associated_file_name=草案
+     *
+     * http://localhost:8080/structured-law/portal/wild-search-associate?page_num=1&page_size=10&associated_file_name=中华人民共和国对外关系法
+     * http://localhost:8080/structured-law/portal/wild-search-associate?page_num=1&page_size=10&document_type=SYJGDBG
+     *
+     *
      * @param pageNum
      * @param pageSize
      * @param lawId
-     * @param termText
      * @return
      */
+    @ApiOperation(value="关键词查询关联文件内容")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = Constants.PAGE_NUM, value = "页码", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.PAGE_SIZE, value = "每页显示数量", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = IntegralFields.LAW_ID, value = "法律id", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.CONTENT_TEXT, value = "正文", dataType = "String", dataTypeClass = String.class),
+    })
     @GetMapping("/wild-search-associate")
-    public AjaxResult wildSearchAssociateFile(@RequestParam(Constants.PAGE_NUM) int pageNum,
-                                             @RequestParam(Constants.PAGE_SIZE) int pageSize,
-                                             @RequestParam(value = IntegralFields.LAW_ID, required = false) String lawId,
-                                             @RequestParam(value = IntegralFields.TERM_TEXT, required = false) String termText) {
+    public R<LawSearchHits> wildSearchAssociateFile(@RequestParam(Constants.PAGE_NUM) int pageNum,
+                                                    @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                                                    @RequestParam(value = IntegralFields.LAW_ID, required = false) String lawId,
+                                                    @RequestParam(value = IntegralFields.DOCUMENT_TYPE, required = false) String documentType,
+                                                    @RequestParam(value = IntegralFields.ASSOCIATED_FILE_NAME, required = false) String associatedFileName,
+                                                    @RequestParam(value = IntegralFields.CONTENT_TEXT, required = false) String contentText) {
         IntegralFields integralFields = new IntegralFields();
         if (StrUtil.isNotBlank(lawId)) {
             integralFields.setLawId(Long.parseLong(lawId));
         }
 
-        if (StrUtil.isNotBlank(termText)) {
-            integralFields.setTermText(termText);
+        if (StrUtil.isNotBlank(contentText)) {
+            integralFields.setContentText(contentText);
+        }
+
+        if (StrUtil.isNotBlank(associatedFileName)) {
+            integralFields.setAssociatedFileName(associatedFileName);
+        }
+
+        if (StrUtil.isNotBlank(documentType)) {
+            integralFields.setDocumentType(documentType);
         }
 
         SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, integralFields);
@@ -230,7 +337,36 @@ public class PortalController extends BaseController {
                 pageNum, pageSize, null,
                 new String[]{ IntegralFields.CONTENT_TEXT }, null, searchSourceBuilderOfProvision);
 
-        return success(matchAssociatedFileHits);
+        return R.ok(matchAssociatedFileHits);
+    }
+
+    /**
+     * 关联文件也一并查出来
+     * @param matchLawHits
+     * @return
+     */
+    private Map<Long, List<IntegralFields>> makeAssociatedFileInfo(LawSearchHits matchLawHits) {
+        Map<Long, List<IntegralFields>> map = new HashMap<>();
+        List<IntegralFields> hitsList = matchLawHits.getSearchHits();
+
+        Set<Long> lawIdList = new HashSet<>();
+        for(IntegralFields fields : hitsList) {
+            lawIdList.add(fields.getLawId());
+        }
+
+        for(Long lawId : lawIdList) {
+            IntegralFields param = new IntegralFields();
+            param.setLawId(lawId);
+            SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, param);
+            LawSearchHits matchAssociatedFileHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
+                    1, 1000, null, null, null, searchSourceBuilderOfProvision);
+
+            if(!matchAssociatedFileHits.getSearchHits().isEmpty()) {
+                map.put(lawId, matchAssociatedFileHits.getSearchHits());
+            }
+        }
+
+        return map;
     }
 
     /**
@@ -303,8 +439,14 @@ public class PortalController extends BaseController {
      * @param condition
      * @return
      */
+    @ApiOperation(value="json格式关键词查询法律条款")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = Constants.PAGE_NUM, value = "页码", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.PAGE_SIZE, value = "每页显示数量", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.CONDITION, value = "json格式查询条件(eg. condition={law_name:\"全国\"})", dataType = "String", dataTypeClass = String.class),
+    })
     @GetMapping("/search-law-provision")
-    public AjaxResult searchLawProvision(@RequestParam(Constants.PAGE_NUM) int pageNum,
+    public R<LawSearchHits> searchLawProvision(@RequestParam(Constants.PAGE_NUM) int pageNum,
                                          @RequestParam(Constants.PAGE_SIZE) int pageSize,
                                          @RequestParam(Constants.CONDITION) String condition) {
         pageNum = pageNum < 1 ? 1 : pageNum;
@@ -315,7 +457,7 @@ public class PortalController extends BaseController {
         LawSearchHits matchHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
                 pageNum, pageSize, null,
                 new String[]{IntegralFields.TERM_TEXT}, IntegralFields.TITLE_NUMBER, searchSourceBuilder);
-        return success(matchHits);
+        return R.ok(matchHits);
     }
 
     /**
@@ -326,8 +468,14 @@ public class PortalController extends BaseController {
      * @param condition
      * @return
      */
+    @ApiOperation(value="json格式关键词查询法律")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = Constants.PAGE_NUM, value = "页码", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.PAGE_SIZE, value = "每页显示数量", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.CONDITION, value = "json格式查询条件(eg. condition={law_name:\"全国\"})", dataType = "String", dataTypeClass = String.class),
+    })
     @GetMapping("/search-law")
-    public AjaxResult searchLaw(@RequestParam(Constants.PAGE_NUM) int pageNum,
+    public R<LawSearchHits> searchLaw(@RequestParam(Constants.PAGE_NUM) int pageNum,
                                 @RequestParam(Constants.PAGE_SIZE) int pageSize,
                                 @RequestParam(Constants.CONDITION) String condition) {
         pageNum = pageNum < 1 ? 1 : pageNum;
@@ -338,7 +486,7 @@ public class PortalController extends BaseController {
         LawSearchHits matchHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW,
                 pageNum, pageSize, null,
                 new String[]{IntegralFields.TERM_TEXT}, null, searchSourceBuilder);
-        return success(matchHits);
+        return R.ok(matchHits);
     }
 
     /**
@@ -349,8 +497,13 @@ public class PortalController extends BaseController {
      * @param size
      * @return
      */
+    @ApiOperation(value="json格式关键词查询法律及法律正文内容")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = IntegralFields.LAW_ID, value = "法律id", dataType = "long", dataTypeClass = Long.class),
+            @ApiImplicitParam(name = Constants.SIZE, value = "显示的条款数量(eg. 1000)", dataType = "int", dataTypeClass = Integer.class),
+    })
     @GetMapping("/law-content")
-    public AjaxResult showLawContent(@RequestParam(IntegralFields.LAW_ID) long lawId,
+    public R<LawDetail> showLawContent(@RequestParam(IntegralFields.LAW_ID) long lawId,
                                      @RequestParam(value = Constants.SIZE, required = false) Integer size) {
         List<IntegralFields> matchOne = elasticSearchSrv.listByLawId(lawId, 1, new String[]{
                 IntegralFields.LAW_ID,
@@ -364,7 +517,7 @@ public class PortalController extends BaseController {
         });
 
         if (matchOne == null || matchOne.isEmpty()) {
-            return success(new ArrayList<>());
+            return R.ok(null);
         }
 
         List<IntegralFields> matchList = elasticSearchSrv.listByLawId(lawId, size, new String[]{
@@ -395,7 +548,7 @@ public class PortalController extends BaseController {
             lawDetail.setValidFrom(DateUtil.format(matchedItem.getValidFrom(), "yyyy-MM-dd"));
         }
 
-        return success(lawDetail);
+        return R.ok(lawDetail);
     }
 
     /**
@@ -420,20 +573,26 @@ public class PortalController extends BaseController {
 
     /**
      * 检索某个法律的历史
+     * http://localhost:8080/structured-law/portal/law-history?law_name=最高人民法院关于知识产权法庭若干问题的规定
      *
      * @param lawName
      * @param size
      * @return
      */
+    @ApiOperation(value="查询某个法律的历史变更")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = IntegralFields.LAW_NAME, value = "法律名称", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = Constants.SIZE, value = "显示的条款数量(eg. 1000)", dataType = "int", dataTypeClass = Integer.class),
+    })
     @GetMapping("/law-history")
-    public AjaxResult listLawHistory(@RequestParam(IntegralFields.LAW_NAME) String lawName,
+    public R<List<IntegralFields>> listLawHistory(@RequestParam(IntegralFields.LAW_NAME) String lawName,
                                      @RequestParam(value = Constants.SIZE, required = false) Integer size) {
         List<IntegralFields> matchList = elasticSearchSrv.listLawHistory(lawName, size, new String[]{
                 IntegralFields.LAW_NAME,
                 IntegralFields.PUBLISH,
                 IntegralFields.VALID_FROM
         });
-        return success(matchList);
+        return R.ok(matchList);
     }
 
 
@@ -442,15 +601,16 @@ public class PortalController extends BaseController {
      *
      * @return
      */
+    @ApiOperation(value="获取各查询条件的可选项")
     @GetMapping("/conditionsOptions")
-    public AjaxResult conditionsOptions() {
+    public R<LawSearchConditionOptions> conditionsOptions() {
         LawSearchConditionOptions options = new LawSearchConditionOptions();
         options.setLevelOptions(lawCache.getLawLevelOptions());
         options.setAuthorityOptions(lawCache.getAuthorityOptions());
         options.setStatusOptions(lawCache.getStatusOptions());
-
+        options.setAuthorityTree(lawCache.getAuthorityTree());
         //collect_status 不知对应什么
-        return success(options);
+        return R.ok(options);
     }
 
     /**
@@ -458,7 +618,7 @@ public class PortalController extends BaseController {
      * 限定了level,就按指定级别查询
      * <p>
      * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&authority=全国人民代表大会常务委员会
-     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&authority=全国人民代表大会常务委员会&law_level=%E6%B3%95%E5%BE%8B%E8%A7%A3%E9%87%8A
+     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&authority=全国人民代表大会常务委员会&law_level=法律解释
      *
      * @param pageNum
      * @param pageSize
@@ -466,15 +626,25 @@ public class PortalController extends BaseController {
      * @param authority
      * @return
      */
+    @ApiOperation(value="如果未限定level，就分组查询， 限定了level,就按指定级别查询")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = Constants.PAGE_NUM, value = "页码", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.PAGE_SIZE, value = "每页显示数量", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = IntegralFields.LAW_LEVEL, value = "效力级别", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.AUTHORITY, value = "制定机关", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.STATUS, value = "状态", dataType = "int", dataTypeClass = Integer.class),
+    })
     @GetMapping("/group/search-law")
-    public AjaxResult searchGroupByLawLevel(@RequestParam(Constants.PAGE_NUM) int pageNum,
-                                            @RequestParam(Constants.PAGE_SIZE) int pageSize,
-                                            @RequestParam(value = IntegralFields.LAW_LEVEL, required = false) String lawLevel,
-                                            @RequestParam(value = IntegralFields.AUTHORITY, required = false) String authority) {
+    public R<LawSearchHitsGroup> searchGroupByLawLevel(@RequestParam(Constants.PAGE_NUM) int pageNum,
+                                                       @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                                                       @RequestParam(value = IntegralFields.LAW_LEVEL, required = false) String lawLevel,
+                                                       @RequestParam(value = IntegralFields.AUTHORITY, required = false) String authority,
+                                                       @RequestParam(value = IntegralFields.STATUS, required = false) Integer status) {
         LawSearchHitsGroup lawSearchHitsGroup = new LawSearchHitsGroup();
 
         IntegralFields integralFields = new IntegralFields();
         integralFields.setAuthority(authority);
+        integralFields.setStatus(status);
 
         if (StrUtil.isBlank(lawLevel)) {
             /** 未限定效力级别 */
@@ -504,7 +674,7 @@ public class PortalController extends BaseController {
                 1, pageSize, null,
                 new String[]{IntegralFields.ASSOCIATED_FILE_NAME}, null, searchSourceBuilderOfProvision);
         lawSearchHitsGroup.setAssociateFile(matchAssociatedFileHits);
-        return success(lawSearchHitsGroup);
+        return R.ok(lawSearchHitsGroup);
     }
 
 
@@ -532,9 +702,14 @@ public class PortalController extends BaseController {
 
         try {
             elasticSearchSrv.initAllIndex();
+            Thread.sleep(5000);
             elasticSearchSrv.importDataToAllIndex();
             return success();
-        } finally {
+        }
+        catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        finally {
             redisTemplate.delete(LOCK_ID_BUILD_ES_INDEX);
         }
     }
@@ -559,6 +734,8 @@ public class PortalController extends BaseController {
     /**
      * 自动提示
      *
+     * http://localhost:8080/structured-law/portal/suggest-multi?field=law_name&text=黄河
+     *
      * @param text
      * @return
      */
@@ -569,10 +746,12 @@ public class PortalController extends BaseController {
         }
 
         List<String> suggestions = new ArrayList<>();
-        List<String> authoritySuggest = elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW, IntegralFields.AUTHORITY, text, null, null);
+        String authoritySuggestField = IntegralFields.AUTHORITY + ".suggest";
+        String lawNameSuggestField = IntegralFields.LAW_NAME + ".suggest";
+        List<String> authoritySuggest = elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW, authoritySuggestField, text, null, null);
         suggestions.addAll(authoritySuggest);
 
-        List<String> lawNameSuggest = elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW, IntegralFields.LAW_NAME, text, null, null);
+        List<String> lawNameSuggest = elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW, lawNameSuggestField, text, null, null);
         for (String suggest : lawNameSuggest) {
             if (suggestions.contains(suggest)) {
                 continue;
@@ -586,6 +765,8 @@ public class PortalController extends BaseController {
     /**
      * 自动提示
      *
+     * http://localhost:8080/structured-law/portal/suggest?field=law_name&text=中国
+     *
      * @param text
      * @return
      */
@@ -594,7 +775,9 @@ public class PortalController extends BaseController {
         if (StrUtil.isBlank(field) || StrUtil.isBlank(text)) {
             return success();
         }
-        return success(elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW_PROVISION, field, text, null, null));
+
+        String suggestField = field + ".suggest";
+        return success(elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW_PROVISION, suggestField, text, null, null));
     }
 
 

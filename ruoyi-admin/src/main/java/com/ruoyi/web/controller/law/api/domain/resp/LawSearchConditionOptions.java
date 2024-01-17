@@ -1,5 +1,7 @@
 package com.ruoyi.web.controller.law.api.domain.resp;
 
+import com.ruoyi.web.controller.law.api.domain.inner.AuthorityTreeNode;
+
 import java.util.List;
 
 /**
@@ -10,6 +12,7 @@ import java.util.List;
 public class LawSearchConditionOptions {
 
     private List<String> authorityOptions;
+    private List<AuthorityTreeNode> authorityTree;
     private List<String> levelOptions;
     /**
      * 立法资料类别的id
@@ -57,5 +60,13 @@ public class LawSearchConditionOptions {
 
     public void setCollectStatusOptions(List<String> collectStatusOptions) {
         this.collectStatusOptions = collectStatusOptions;
+    }
+
+    public List<AuthorityTreeNode> getAuthorityTree() {
+        return authorityTree;
+    }
+
+    public void setAuthorityTree(List<AuthorityTreeNode> authorityTree) {
+        this.authorityTree = authorityTree;
     }
 }

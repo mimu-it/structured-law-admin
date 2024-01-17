@@ -2,6 +2,7 @@ package com.ruoyi.web.controller.law.srv.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.Page;
+import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.law.srv.AbstractEsSrv;
@@ -12,12 +13,9 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 
 import javax.annotation.Resource;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 
 /**
  * @author xiao.hu
@@ -38,7 +36,7 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
     @Override
     public String getMappingConfig() {
         try {
-            return super.readConfig("classpath:elasticsearch/index_law_provision_mappings.json");
+            return super.readConfig(super.getResourcePathPrefix() + "elasticsearch/index_law_provision_mappings.json");
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
