@@ -12,6 +12,9 @@
       "fields": {
         "suggest": {
           "type":"completion"
+        },
+        "keyword": {
+          "type": "keyword"
         }
       }
     },
@@ -55,7 +58,15 @@
     },
     "title": {
       "type": "text",
-      "analyzer": "ik_max_word"
+      "analyzer": "ik_max_word",
+      "fields": {
+        "suggest": {
+          "type":"completion"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
     },
     "title_number": {
       "type": "text",
@@ -69,7 +80,12 @@
     },
     "term_text": {
       "type": "text",
-      "analyzer": "ik_max_word"
+      "analyzer": "ik_max_word",
+      "fields": {
+        "suggest": {
+          "type":"completion"
+        }
+      }
     }
   }
 }

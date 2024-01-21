@@ -52,8 +52,7 @@ public class SlLawProvisionController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('structured-law:provision:list')")
     @GetMapping("/list")
-    public TableDataInfo list(SlLawProvision slLawProvision)
-    {
+    public TableDataInfo list(SlLawProvision slLawProvision) {
         startPage();
         Page<SlLawProvision> list = (Page<SlLawProvision>) slLawProvisionService.selectSlLawProvisionList(slLawProvision);
         List<Map<String, Object>> mapList = new ArrayList<>(list.size());
@@ -91,10 +90,9 @@ public class SlLawProvisionController extends BaseController
     @PreAuthorize("@ss.hasPermi('structured-law:provision:export')")
     @Log(title = "法律条款", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, SlLawProvision slLawProvision)
-    {
+    public void export(HttpServletResponse response, SlLawProvision slLawProvision) {
         List<SlLawProvision> list = slLawProvisionService.selectSlLawProvisionList(slLawProvision);
-        ExcelUtil<SlLawProvision> util = new ExcelUtil<SlLawProvision>(SlLawProvision.class);
+        ExcelUtil<SlLawProvision> util = new ExcelUtil<>(SlLawProvision.class);
         util.exportExcel(response, list, "法律条款数据");
     }
 
@@ -103,8 +101,7 @@ public class SlLawProvisionController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('structured-law:provision:query')")
     @GetMapping(value = "/{id}")
-    public AjaxResult getInfo(@PathVariable("id") Long id)
-    {
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
         return success(slLawProvisionService.selectSlLawProvisionById(id));
     }
 
@@ -114,8 +111,7 @@ public class SlLawProvisionController extends BaseController
     @PreAuthorize("@ss.hasPermi('structured-law:provision:add')")
     @Log(title = "法律条款", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@RequestBody SlLawProvision slLawProvision)
-    {
+    public AjaxResult add(@RequestBody SlLawProvision slLawProvision) {
         return toAjax(slLawProvisionService.insertSlLawProvision(slLawProvision));
     }
 
@@ -125,8 +121,7 @@ public class SlLawProvisionController extends BaseController
     @PreAuthorize("@ss.hasPermi('structured-law:provision:edit')")
     @Log(title = "法律条款", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@RequestBody SlLawProvision slLawProvision)
-    {
+    public AjaxResult edit(@RequestBody SlLawProvision slLawProvision) {
         return toAjax(slLawProvisionService.updateSlLawProvision(slLawProvision));
     }
 
@@ -136,8 +131,7 @@ public class SlLawProvisionController extends BaseController
     @PreAuthorize("@ss.hasPermi('structured-law:provision:remove')")
     @Log(title = "法律条款", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")
-    public AjaxResult remove(@PathVariable Long[] ids)
-    {
+    public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(slLawProvisionService.deleteSlLawProvisionByIds(ids));
     }
 }

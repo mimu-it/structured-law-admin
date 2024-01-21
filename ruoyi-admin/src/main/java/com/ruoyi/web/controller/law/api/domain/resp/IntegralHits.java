@@ -1,5 +1,6 @@
-package com.ruoyi.web.controller.elasticsearch.domain;
+package com.ruoyi.web.controller.law.api.domain.resp;
 
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
 
 import java.util.List;

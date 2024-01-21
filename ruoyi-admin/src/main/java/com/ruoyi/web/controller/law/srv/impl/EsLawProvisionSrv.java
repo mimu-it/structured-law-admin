@@ -2,7 +2,6 @@ package com.ruoyi.web.controller.law.srv.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.Page;
-import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.law.srv.AbstractEsSrv;
@@ -68,13 +67,22 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
 
         String title = condition.getTitle();
         if (StrUtil.isNotBlank(title)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TITLE, title));
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TITLE + ".keyword", title));
+        }
+
+        BoolQueryBuilder shouldQuery = QueryBuilders.boolQuery();
+        /** 因为在 EsLawProvisionSrv 中， 法律名和条款搜索是或者关系，所以lawName单独从 makeCommonBoolQueryBuilder 中拿出来*/
+        String lawName = condition.getLawName();
+        if (StrUtil.isNotBlank(lawName)) {
+            shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
         }
 
         String termText = condition.getTermText();
         if (StrUtil.isNotBlank(termText)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TERM_TEXT, termText));
+            shouldQuery.should(QueryBuilders.termQuery(IntegralFields.TERM_TEXT, termText));
         }
+
+        boolQueryBuilder.must(shouldQuery);
 
         searchSourceBuilder.query(boolQueryBuilder);
         return searchSourceBuilder;

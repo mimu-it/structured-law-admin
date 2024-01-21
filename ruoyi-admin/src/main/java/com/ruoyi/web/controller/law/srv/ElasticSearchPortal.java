@@ -7,9 +7,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.github.pagehelper.Page;
+import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
+import com.ruoyi.web.controller.law.api.domain.resp.SuggestHits;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -28,8 +31,10 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.document.DocumentField;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -202,7 +207,7 @@ public class ElasticSearchPortal {
      * excludeFields 控制显示内容 (优化查询效率将所有无关查询提示字段都不显示)
      * @return
      */
-    public List<String> suggest(String indexName, String suggestField, String suggestValue, String[] includeFields, String[] excludeFields) {
+    public List<SuggestHits> suggest(String indexName, String suggestField, String suggestValue, String[] includeFields, String[] excludeFields) {
         String suggestionName = suggestField + "_suggest";
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -217,7 +222,7 @@ public class ElasticSearchPortal {
         suggestBuilder.addSuggestion(suggestionName, completionSuggestionBuilder);
         searchSourceBuilder.suggest(suggestBuilder);
 
-        // 构建SearchRequest 指定查询的库
+        /** 构建SearchRequest 指定查询的库 */
         SearchRequest searchRequest = new SearchRequest(indexName);
         searchRequest.source(searchSourceBuilder);
 
@@ -233,7 +238,7 @@ public class ElasticSearchPortal {
         // 获取查询的结果
         Suggest suggest = searchResponse.getSuggest();
 
-        Set<String> suggestSet = new HashSet<>();
+        Set<SuggestHits> suggestSet = new HashSet<>();
         int maxSuggest = 0;
         if (suggest != null) {
             // 获取Suggestion的结果
@@ -245,9 +250,12 @@ public class ElasticSearchPortal {
                     if (!item.getOptions().isEmpty()) {
                         // 若item的option不为空,循环遍历
                         for (CompletionSuggestion.Entry.Option option : item.getOptions()) {
-                            String tip = option.getText().toString();
-                            if (!suggestSet.contains(tip)) {
-                                suggestSet.add(tip);
+                            SuggestHits suggestHits = new SuggestHits();
+                            suggestHits.setText(option.getText().toString());
+                            suggestHits.setExtraData(option.getHit().getSourceAsMap());
+
+                            if (!suggestSet.contains(suggestHits)) {
+                                suggestSet.add(suggestHits);
                                 ++maxSuggest;
                             }
                         }
@@ -259,7 +267,7 @@ public class ElasticSearchPortal {
             }
         }
 
-        return Arrays.asList(suggestSet.toArray(new String[]{}));
+        return Arrays.asList(suggestSet.toArray(new SuggestHits[]{}));
     }
 
 
@@ -299,8 +307,11 @@ public class ElasticSearchPortal {
      * @param indexName
      */
     public void bulkInsert(String indexName) {
+        String active = SpringUtils.getActiveProfile();
+        boolean isProd = Constants.PROD.equals(active);
+
         int pageNum = 0;
-        int pageSize = 50;
+        int pageSize = isProd? 1000 : 50;
         Page<IntegralFields> page = new Page<>();
         /**
          * 分页往 elasticsearch 中插入数据
@@ -317,7 +328,7 @@ public class ElasticSearchPortal {
                     List<IntegralFields> rowList = page.getResult();
                     this.bulkInsert(indexName, rowList);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error("", e);
                 }
             }
 
@@ -331,6 +342,8 @@ public class ElasticSearchPortal {
 
             page = esSrv.listDataByPage(pageNum, pageSize);
         }
+
+        logger.info(String.format("Import %s data completed, profile: %s", indexName, active));
     }
 
 
@@ -385,18 +398,26 @@ public class ElasticSearchPortal {
      *
      * @throws IOException
      */
-    public IntegralFields getByProvisionId(long provisionId, String[] fields) throws IOException {
+    public IntegralFields getByProvisionId(long provisionId, String[] fields) {
         GetRequest request = new GetRequest(INDEX__LAW_PROVISION, StrUtil.toString(provisionId));
         if (ArrayUtil.isNotEmpty(fields)) {
             //只查询特定字段。如果需要查询所有字段则不设置该项。
             request.fetchSourceContext(new FetchSourceContext(true, fields, Strings.EMPTY_ARRAY));
         }
-        GetResponse response = client.get(request, RequestOptions.DEFAULT);
-        return (IntegralFields) response.getSource();
+
+        try {
+            GetResponse response = client.get(request, RequestOptions.DEFAULT);
+            String mapStr = JSONUtil.toJsonStr(response.getSource());
+            IntegralFields integralFields = JSONUtil.toBean(mapStr, IntegralFields.class);
+            return integralFields;
+        } catch (IOException e) {
+            logger.error("", e);
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
-     * 查看历史
+     * 查看历史，只查法律
      * @param lawName
      * @param size
      * @param fields
@@ -410,7 +431,9 @@ public class ElasticSearchPortal {
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery().must(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawName))
         );*/
-        searchSourceBuilder.query(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        boolQueryBuilder.must(QueryBuilders.wildcardQuery(IntegralFields.LAW_NAME + ".keyword", lawName + "*"));
+        searchSourceBuilder.query(boolQueryBuilder);
 
         searchSourceBuilder.sort(IntegralFields.PUBLISH, SortOrder.DESC);
         return this.searchToList(size, fields,
@@ -418,18 +441,54 @@ public class ElasticSearchPortal {
                 searchRequest, searchSourceBuilder);
     }
 
+
+    /**
+     * 查看历史，查法律具体条款
+     * @param lawName
+     * @param size
+     * @param fields
+     * @return
+     */
+    public List<IntegralFields> listLawProvisionsHistory(String lawName, String title, Integer size, String[] fields) {
+        SearchRequest searchRequest = new SearchRequest(INDEX__LAW_PROVISION);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_NAME, lawName));
+        if(StrUtil.isNotBlank(title)) {
+            boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(IntegralFields.TITLE, title));
+        }
+
+        searchSourceBuilder.query(boolQueryBuilder);
+
+        searchSourceBuilder.sort(IntegralFields.PUBLISH, SortOrder.DESC);
+        return this.searchToList(size, fields,
+                new String[]{ IntegralFields.TERM_TEXT, IntegralFields.LAW_NAME },
+                searchRequest, searchSourceBuilder);
+    }
+
+
     /**
      * 通过id查询
      * http://localhost:8080/structured-law/portal/law-content?law_id=110
      *
      * @throws IOException
      */
-    public List<IntegralFields> listByLawId(long lawId, Integer size, String[] fields) {
+    public List<IntegralFields> listProvisionsByLawId(long lawId, String title, Integer size, String[] fields) {
         SearchRequest searchRequest = new SearchRequest(INDEX__LAW_PROVISION);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
         /** termQuery 不会分词，最小单位匹配， 不能用于全匹配 */
-        //searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId)));
-        searchSourceBuilder.query(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId));
+        boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId));
+
+        if(StrUtil.isNotBlank(title)) {
+            /** 如果条目小标题不为空，则需要加入搜索条件中 */
+            boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(IntegralFields.TITLE, title));
+        }
+
+        searchSourceBuilder.query(boolQueryBuilder);
 
         searchSourceBuilder.sort(IntegralFields.TITLE_NUMBER + ".keyword", SortOrder.ASC);
         return this.searchToList(size, fields,
@@ -460,11 +519,7 @@ public class ElasticSearchPortal {
         if (response.status().getStatus() == 200) {
             ArrayList<IntegralFields> list = new ArrayList<>();
             for (SearchHit hit : response.getHits().getHits()) {
-                //原来的结果
-                Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-                String mapStr = JSONUtil.toJsonStr(sourceAsMap);
-                IntegralFields provision = JSONUtil.toBean(mapStr, IntegralFields.class);
-                list.add(provision);
+                this.mixHighlight(highlightFields, list, hit);
             }
             return list;
         }
@@ -563,13 +618,30 @@ public class ElasticSearchPortal {
         //解析结果
         ArrayList<IntegralFields> list = new ArrayList<>();
         for (SearchHit hit : searchHits) {
-            Map<String, HighlightField> high = hit.getHighlightFields();
+            mixHighlight(highlightFields, list, hit);
+        }
 
-            //原来的结果
-            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+        highlightSearchHits.setTotal(totalHitsCount);
+        highlightSearchHits.setSearchHits(list);
+        return highlightSearchHits;
+    }
 
-            String lawNameOrigin = (String) sourceAsMap.get(IntegralFields.LAW_NAME);
-            for(String highlightField : highlightFields) {
+    /**
+     * 把高亮字段复制给原数据
+     * @param highlightFields
+     * @param list
+     * @param hit
+     */
+    private void mixHighlight(String[] highlightFields, ArrayList<IntegralFields> list, SearchHit hit) {
+        Map<String, HighlightField> high = hit.getHighlightFields();
+
+        //原来的结果
+        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+
+        String lawNameOrigin = (String) sourceAsMap.get(IntegralFields.LAW_NAME);
+
+        if (highlightFields != null && high != null) {
+            for (String highlightField : highlightFields) {
                 HighlightField field = high.get(highlightField);
 
                 //解析高亮字段,将原来的字段换为高亮字段
@@ -583,16 +655,12 @@ public class ElasticSearchPortal {
                     sourceAsMap.put(highlightField, nTitle);
                 }
             }
-
-            String mapStr = JSONUtil.toJsonStr(sourceAsMap);
-            IntegralFields integralFields = JSONUtil.toBean(mapStr, IntegralFields.class);
-            integralFields.setLawNameOrigin(lawNameOrigin);
-            list.add(integralFields);
         }
 
-        highlightSearchHits.setTotal(totalHitsCount);
-        highlightSearchHits.setSearchHits(list);
-        return highlightSearchHits;
+        String mapStr = JSONUtil.toJsonStr(sourceAsMap);
+        IntegralFields integralFields = JSONUtil.toBean(mapStr, IntegralFields.class);
+        integralFields.setLawNameOrigin(lawNameOrigin);
+        list.add(integralFields);
     }
 
     /**

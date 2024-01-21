@@ -140,7 +140,7 @@ public class PortalSrv {
 
         List<IntegralFields> integralFieldsList = new ArrayList<>(list.size());
 
-        LFUCache<Long, SlLaw> cacheLaw = CacheUtil.newLFUCache(10);
+        LFUCache<Long, SlLaw> cacheLaw = CacheUtil.newLFUCache(100);
         for(SlLawProvision row : list) {
             IntegralFields integralFields = new IntegralFields();
             /** set_id 用于为es指定_id, 这样插入同样的数据只会修改，不会新增 */
@@ -161,6 +161,10 @@ public class PortalSrv {
                             SlLaw.NAME,
                             SlLaw.LAW_LEVEL,
                             SlLaw.AUTHORITY,
+                            SlLaw.AUTHORITY_PROVINCE,
+                            SlLaw.AUTHORITY_CITY,
+                            SlLaw.AUTHORITY_DISTRICT,
+                            SlLaw.DOCUMENT_NO,
                             SlLaw.PUBLISH,
                             SlLaw.STATUS,
                             SlLaw.SUBTITLE,

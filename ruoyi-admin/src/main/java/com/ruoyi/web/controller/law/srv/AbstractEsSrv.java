@@ -92,7 +92,7 @@ public abstract class AbstractEsSrv {
     }
 
     /**
-     * 公共条件的设置
+     * 公共条件的设置，属于高级搜索条件，都是并且的关系
      * @param condition
      * @return
      */
@@ -120,11 +120,6 @@ public abstract class AbstractEsSrv {
         if (StrUtil.isNotBlank(authorityDistrict)) {
             List<String> districts = JSONUtil.toList(authorityDistrict, String.class);
             boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_DISTRICT, districts));
-        }
-
-        String lawName = condition.getLawName();
-        if (StrUtil.isNotBlank(lawName)) {
-            boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
         }
 
         String lawLevel = condition.getLawLevel();

@@ -1,5 +1,10 @@
 package com.ruoyi.web.controller.law.api.domain.resp;
 
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+
+import java.util.List;
+import java.util.Map;
+
 /**
  * @author xiao.hu
  * @date 2023-12-30
@@ -16,7 +21,10 @@ public class LawDetail {
     private String documentNo;
     private String according;
     private String title;
-    private String content;
+    private List<IntegralFields> provisions;
+
+    private Map<String, List<IntegralFields>> historyMap;
+    private Map<Long, List<IntegralFields>> associatedFileMap;
 
     public String getId() {
         return id;
@@ -90,11 +98,27 @@ public class LawDetail {
         this.title = title;
     }
 
-    public String getContent() {
-        return content;
+    public List<IntegralFields> getProvisions() {
+        return provisions;
     }
 
-    public void setContent(String content) {
-        this.content = content;
+    public void setProvisions(List<IntegralFields> provisions) {
+        this.provisions = provisions;
+    }
+
+    public Map<String, List<IntegralFields>> getHistoryMap() {
+        return historyMap;
+    }
+
+    public void setHistoryMap(Map<String, List<IntegralFields>> historyMap) {
+        this.historyMap = historyMap;
+    }
+
+    public Map<Long, List<IntegralFields>> getAssociatedFileMap() {
+        return associatedFileMap;
+    }
+
+    public void setAssociatedFileMap(Map<Long, List<IntegralFields>> associatedFileMap) {
+        this.associatedFileMap = associatedFileMap;
     }
 }

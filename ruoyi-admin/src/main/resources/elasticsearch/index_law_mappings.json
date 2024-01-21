@@ -9,6 +9,9 @@
       "fields": {
         "suggest": {
           "type":"completion"
+        },
+        "keyword": {
+          "type": "keyword"
         }
       }
     },

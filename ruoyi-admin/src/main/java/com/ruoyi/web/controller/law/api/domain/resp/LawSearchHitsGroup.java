@@ -10,23 +10,16 @@ import java.util.Map;
  */
 public class LawSearchHitsGroup {
 
-    private Map<String, LawSearchHits> law = new HashMap<>();
+    /**
+     * 效力级别level和命中值的对应关系
+     */
+    private Map<String, IntegralHits> law = new HashMap<>();
 
-    private LawSearchHits associateFile;
-
-    public Map<String, LawSearchHits> getLaw() {
+    public Map<String, IntegralHits> getLaw() {
         return law;
     }
 
-    public void putLaw(String key, LawSearchHits hits) {
+    public void putLaw(String key, IntegralHits hits) {
         this.law.put(key, hits);
-    }
-
-    public LawSearchHits getAssociateFile() {
-        return associateFile;
-    }
-
-    public void setAssociateFile(LawSearchHits associateFile) {
-        this.associateFile = associateFile;
     }
 }

@@ -184,4 +184,5 @@ public class Constants
     public final static String HITS = "hits";
     public final static String HISTORY = "history";
     public final static String ASSOCIATE = "associate";
+    public final static String PROD = "prod";
 }

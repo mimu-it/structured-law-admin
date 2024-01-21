@@ -31,7 +31,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 
     <select id="listLawLevel" resultType="string">
-        select distinct name from sl_law_category
+        select distinct name from sl_law_category where name != '关联文件'
     </select>
 
 

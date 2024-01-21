@@ -1,7 +1,6 @@
 package com.ruoyi.web.controller.elasticsearch.domain;
 
 import java.util.Date;
-import java.util.Map;
 
 /**
  * @author xiao.hu
@@ -9,11 +8,13 @@ import java.util.Map;
  * @apiNote
  * 用于保存到 es 的宽表对象
  */
-public class IntegralFields implements EsFields{
+public class IntegralFields extends SearchFields implements EsFields{
+
     private String esDocId;
     private Long lawId;
     private Long provisionId;
     private Long associatedFileId;
+
     private String lawNameOrigin;
     private String lawName;
     private String associatedFileName;
@@ -24,18 +25,10 @@ public class IntegralFields implements EsFields{
     private String authorityCity;
     private String authorityDistrict;
     private String tags;
-
     private Date publish;
-    private String publishRange;
-
     private Date validFrom;
-    private String validFromRange;
-
     private Integer status;
-
     private String documentNo;
-    private String[] documentNoArray;
-
     private String documentType;
     private String title;
     private String titleNumber;
@@ -248,33 +241,6 @@ public class IntegralFields implements EsFields{
 
     public void setAssociatedFileName(String associatedFileName) {
         this.associatedFileName = associatedFileName;
-    }
-
-    @Override
-    public String[] getDocumentNoArray() {
-        return documentNoArray;
-    }
-
-    public void setDocumentNoArray(String[] documentNoArray) {
-        this.documentNoArray = documentNoArray;
-    }
-
-    @Override
-    public String getPublishRange() {
-        return publishRange;
-    }
-
-    public void setPublishRange(String publishRange) {
-        this.publishRange = publishRange;
-    }
-
-    @Override
-    public String getValidFromRange() {
-        return validFromRange;
-    }
-
-    public void setValidFromRange(String validFromRange) {
-        this.validFromRange = validFromRange;
     }
 
     public String getLawNameOrigin() {

@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.law.srv.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.Page;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
@@ -8,6 +9,7 @@ import com.ruoyi.web.controller.elasticsearch.domain.LawFields;
 import com.ruoyi.web.controller.law.srv.AbstractEsSrv;
 import com.ruoyi.web.controller.law.srv.PortalSrv;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +76,12 @@ public class EsLawSrv extends AbstractEsSrv {
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         BoolQueryBuilder boolQueryBuilder = super.makeCommonBoolQueryBuilder(lawFields);
+
+        /** 因为在 EsLawProvisionSrv 中， 法律名和条款搜索是或者关系，所以lawName单独从 makeCommonBoolQueryBuilder 中拿出来*/
+        String lawName = lawFields.getLawName();
+        if (StrUtil.isNotBlank(lawName)) {
+            boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
+        }
 
         searchSourceBuilder.query(boolQueryBuilder);
         return searchSourceBuilder;
