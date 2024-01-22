@@ -185,4 +185,6 @@ public class Constants
     public final static String HISTORY = "history";
     public final static String ASSOCIATE = "associate";
     public final static String PROD = "prod";
+    public final static String SORT_FIELD = "sort_field";
+    public final static String SORT_TYPE = "sort_type";
 }

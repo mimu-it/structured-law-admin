@@ -28,6 +28,7 @@ public class IntegralFields extends SearchFields implements EsFields{
     private Date publish;
     private Date validFrom;
     private Integer status;
+    private String statusLabel;
     private String documentNo;
     private String documentType;
     private String title;
@@ -251,6 +252,14 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.lawNameOrigin = lawNameOrigin;
     }
 
+    public String getStatusLabel() {
+        return statusLabel;
+    }
+
+    public void setStatusLabel(String statusLabel) {
+        this.statusLabel = statusLabel;
+    }
+
     public static final String LAW_ID = "law_id";
     public static final String PROVISION_ID = "provision_id";
     public static final String ASSOCIATED_FILE_ID = "associated_file_id";
@@ -264,6 +273,7 @@ public class IntegralFields extends SearchFields implements EsFields{
     public static final String TAGS = "tags";
     public static final String PUBLISH = "publish";
     public static final String STATUS = "status";
+    public static final String STATUS_LABEL = "status_label";
     public static final String VALID_FROM = "valid_from";
     public static final String DOCUMENT_NO = "document_no";
     public static final String TITLE = "title";

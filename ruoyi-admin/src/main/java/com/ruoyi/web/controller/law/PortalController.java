@@ -10,7 +10,11 @@ import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.R;
+import com.ruoyi.system.domain.SlLaw;
+import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.law.api.domain.inner.Statistics;
+import com.ruoyi.web.controller.law.api.domain.inner.StatisticsRecord;
 import com.ruoyi.web.controller.law.api.domain.resp.*;
 import com.ruoyi.web.controller.law.cache.LawCache;
 import com.ruoyi.web.controller.law.srv.ElasticSearchPortal;
@@ -18,6 +22,7 @@ import io.swagger.annotations.*;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -54,7 +59,10 @@ public class PortalController extends BaseController {
     private LawCache lawCache;
 
     @Resource
-    private ElasticSearchPortal elasticSearchSrv;
+    private ElasticSearchPortal elasticSearchPortal;
+
+    @Resource
+    private ISlLawService slLawService;
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
@@ -113,7 +121,7 @@ public class PortalController extends BaseController {
 
         Map<String, List<IntegralFields>> map = new HashMap<>(lawNameList.size());
         for(String name : lawNameList) {
-            List<IntegralFields> matchHistoryList = elasticSearchSrv.listLawHistory(name, 1000, new String[]{
+            List<IntegralFields> matchHistoryList = elasticSearchPortal.listLawHistory(name, 1000, new String[]{
                     IntegralFields.LAW_NAME,
                     IntegralFields.PUBLISH,
                     IntegralFields.VALID_FROM,
@@ -152,7 +160,7 @@ public class PortalController extends BaseController {
 
         Map<String, List<IntegralFields>> map = new HashMap<>(lawNameList.size());
         for(String name : lawNameList) {
-            List<IntegralFields> matchHistoryList = elasticSearchSrv.listLawProvisionsHistory(name, title,1000, new String[]{
+            List<IntegralFields> matchHistoryList = elasticSearchPortal.listLawProvisionsHistory(name, title,1000, new String[]{
                     IntegralFields.LAW_NAME,
                     IntegralFields.PUBLISH,
                     IntegralFields.VALID_FROM,
@@ -211,10 +219,10 @@ public class PortalController extends BaseController {
             integralFields.setDocumentType(documentType);
         }
 
-        SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, integralFields);
-        LawSearchHits matchAssociatedFileHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
+        SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchPortal.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, integralFields);
+        LawSearchHits matchAssociatedFileHits = elasticSearchPortal.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
                 pageNum, pageSize, null,
-                new String[]{ IntegralFields.CONTENT_TEXT }, null, searchSourceBuilderOfProvision);
+                new String[]{ IntegralFields.CONTENT_TEXT }, null, null, searchSourceBuilderOfProvision);
 
         return R.ok(matchAssociatedFileHits);
     }
@@ -244,9 +252,9 @@ public class PortalController extends BaseController {
         for(Long lawId : lawIdList) {
             IntegralFields param = new IntegralFields();
             param.setLawId(lawId);
-            SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, param);
-            LawSearchHits matchAssociatedFileHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
-                    1, 1000, null, null, null, searchSourceBuilderOfProvision);
+            SearchSourceBuilder searchSourceBuilderOfProvision = elasticSearchPortal.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, param);
+            LawSearchHits matchAssociatedFileHits = elasticSearchPortal.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
+                    1, 1000, null, null, null, null, searchSourceBuilderOfProvision);
 
             if(!matchAssociatedFileHits.getSearchHits().isEmpty()) {
                 map.put(lawId, matchAssociatedFileHits.getSearchHits());
@@ -312,7 +320,7 @@ public class PortalController extends BaseController {
 
     /**
      * 获取法律详情, 可获取全文结构树
-     * http://localhost:8080/structured-law/portal/law-content?law_id=110
+     * [已测， 注意如果es内存不够会提示出错，奔溃] http://localhost:8080/structured-law/portal/law-content?law_id=110
      *
      * @param lawId
      * @param size
@@ -327,7 +335,7 @@ public class PortalController extends BaseController {
     public R<LawDetail> showLawContent(@RequestParam(IntegralFields.LAW_ID) long lawId,
                                      @RequestParam(value = Constants.SIZE, required = false) Integer size) {
         /** 首先获取法律的基本信息 */
-        List<IntegralFields> matchOne = elasticSearchSrv.listProvisionsByLawId(lawId, null,1, new String[]{
+        List<IntegralFields> matchOne = elasticSearchPortal.listProvisionsByLawId(lawId, null,1, new String[]{
                 IntegralFields.LAW_ID,
                 IntegralFields.LAW_NAME,
                 IntegralFields.LAW_LEVEL,
@@ -343,7 +351,7 @@ public class PortalController extends BaseController {
         }
 
         /** 首先获取法律的所有条款数据，其实已经自带全文结构树 */
-        List<IntegralFields> matchList = elasticSearchSrv.listProvisionsByLawId(lawId, null, size, new String[]{
+        List<IntegralFields> matchList = elasticSearchPortal.listProvisionsByLawId(lawId, null, size, new String[]{
                 IntegralFields.TITLE,
                 IntegralFields.TERM_TEXT,
                 IntegralFields.LAW_NAME,
@@ -375,7 +383,7 @@ public class PortalController extends BaseController {
         }
 
         lawDetail.setStatus(String.valueOf(matchedItem.getStatus()));
-        lawDetail.setTitle(matchedItem.getLawName());
+        lawDetail.setLawName(matchedItem.getLawName());
 
         if (matchedItem.getValidFrom() != null) {
             lawDetail.setValidFrom(DateUtil.format(matchedItem.getValidFrom(), "yyyy-MM-dd"));
@@ -389,6 +397,9 @@ public class PortalController extends BaseController {
 
     /**
      * 法律条款id查询条款正文内容
+     *
+     * [已测]http://localhost:8080/structured-law/portal/law-provision-content?provision_id=110
+     *
      * @param provisionId
      * @return
      */
@@ -399,7 +410,7 @@ public class PortalController extends BaseController {
     @GetMapping("/law-provision-content")
     public R<IntegralFields> showLawProvisionContent(@RequestParam(IntegralFields.PROVISION_ID) long provisionId) {
         /** 首先获取法律的基本信息 */
-        IntegralFields matchOne = elasticSearchSrv.getByProvisionId(provisionId, new String[]{
+        IntegralFields matchOne = elasticSearchPortal.getByProvisionId(provisionId, new String[]{
                 IntegralFields.LAW_ID,
                 IntegralFields.LAW_NAME,
                 IntegralFields.LAW_LEVEL,
@@ -439,21 +450,31 @@ public class PortalController extends BaseController {
 
     /**
      * 检索某个法律的历史
-     * http://localhost:8080/structured-law/portal/law-history?law_name=最高人民法院关于知识产权法庭若干问题的规定
+     * [已测] http://localhost:8080/structured-law/portal/law-history?law_name=最高人民法院关于知识产权法庭若干问题的规定
      *
-     * @param lawName
+     * http://localhost:8080/structured-law/portal/law-history?law_id=123
+     *
+     * @param lawId
      * @param size
      * @return
      */
     @ApiOperation(value="查询某个法律的历史变更")
     @ApiImplicitParams({
-            @ApiImplicitParam(name = IntegralFields.LAW_NAME, value = "法律名称", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = IntegralFields.LAW_ID, value = "法律id", dataType = "long", dataTypeClass = Long.class),
             @ApiImplicitParam(name = Constants.SIZE, value = "显示的条款数量(eg. 1000)", dataType = "int", dataTypeClass = Integer.class),
     })
     @GetMapping("/law-history")
-    public R<List<IntegralFields>> listLawHistory(@RequestParam(IntegralFields.LAW_NAME) String lawName,
+    public R<List<IntegralFields>> listLawHistory(@RequestParam(IntegralFields.LAW_ID) long lawId,
                                      @RequestParam(value = Constants.SIZE, required = false) Integer size) {
-        List<IntegralFields> matchList = elasticSearchSrv.listLawHistory(lawName, size, new String[]{
+        SlLaw law = slLawService.getById(lawId, new String[]{
+                SlLaw.NAME
+        });
+
+        if(law == null) {
+            return R.ok(new ArrayList<>());
+        }
+
+        List<IntegralFields> matchList = elasticSearchPortal.listLawHistory(law.getName(), size, new String[]{
                 IntegralFields.LAW_ID,
                 IntegralFields.LAW_NAME,
                 IntegralFields.STATUS,
@@ -466,7 +487,7 @@ public class PortalController extends BaseController {
 
     /**
      * 获取各个条件的选项
-     *
+     * [已测]
      * @return
      */
     @ApiOperation(value="获取各查询条件的可选项")
@@ -486,14 +507,14 @@ public class PortalController extends BaseController {
      * 限定了level,就按指定级别查询
      *
      *
-     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&content_text=诈骗
-     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&content_text=诈骗&law_level=["司法解释"]
+     * [已测]http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&content_text=诈骗
+     * [已测]http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&content_text=诈骗&law_level=["司法解释"]
      *
      * [已测]http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&title=第一章/第二条
      *
      * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&law_name=最高人民法院关于适用《民法典》婚姻家庭编的解释（一）
      *
-     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&authority=全国人民代表大会常务委员会
+     * [已测]http://localhost:8080/structured-law/portal/group/search-law?page_num=1&page_size=10&authority=全国人民代表大会常务委员会
      *
      * 若依框架后端使用的响应对象AjaxResult，和Swagger存在不兼容问题，导致返回体即使使用了Swagger注解，但是Swagger接口文档中，不显示返回体的对象Swagger文档
      * @param pageNum
@@ -506,6 +527,8 @@ public class PortalController extends BaseController {
     @ApiImplicitParams({
             @ApiImplicitParam(name = Constants.PAGE_NUM, value = "页码", dataType = "int", dataTypeClass = Integer.class),
             @ApiImplicitParam(name = Constants.PAGE_SIZE, value = "每页显示数量", dataType = "int", dataTypeClass = Integer.class),
+            @ApiImplicitParam(name = Constants.SORT_FIELD, value = "用于排序的字段", dataType = "String", dataTypeClass = String.class),
+            @ApiImplicitParam(name = Constants.SORT_TYPE, value = "用于排序的类型，升序、降序", dataType = "Boolean", dataTypeClass = Boolean.class),
             @ApiImplicitParam(name = IntegralFields.CONTENT_TEXT, value = "搜索内容(既搜索法律名称，也搜索具体条款)", dataType = "String", dataTypeClass = String.class),
             @ApiImplicitParam(name = IntegralFields.LAW_NAME, value = "法律名称", dataType = "String", dataTypeClass = String.class),
             @ApiImplicitParam(name = IntegralFields.TITLE, value = "法条小标题(eg. 第十二条)", dataType = "String", dataTypeClass = String.class),
@@ -523,6 +546,8 @@ public class PortalController extends BaseController {
     @GetMapping("/group/search-law")
     public R<LawSearchHitsGroup> searchGroupByLawLevel(@RequestParam(Constants.PAGE_NUM) int pageNum,
                                                        @RequestParam(Constants.PAGE_SIZE) int pageSize,
+                                                       @RequestParam(value = Constants.SORT_FIELD, required = false) String sortField,
+                                                       @RequestParam(value = Constants.SORT_TYPE, required = false) Boolean sortType,
                                                        @RequestParam(value = IntegralFields.CONTENT_TEXT, required = false) String contentText,
                                                        @RequestParam(value = IntegralFields.LAW_NAME, required = false) String lawName,
                                                        @RequestParam(value = IntegralFields.TERM_TEXT, required = false) String termText,
@@ -612,12 +637,12 @@ public class PortalController extends BaseController {
             integralFields.setLawLevel(level);
 
             /** 构造es查询条件 */
-            SearchSourceBuilder searchSourceBuilderOfLaw = elasticSearchSrv.mustConditions(ElasticSearchPortal.INDEX__LAW_PROVISION, integralFields);
+            SearchSourceBuilder searchSourceBuilderOfLaw = elasticSearchPortal.mustConditions(ElasticSearchPortal.INDEX__LAW_PROVISION, integralFields);
 
             /** 查询es */
-            LawSearchHits matchProvisionHits = elasticSearchSrv.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
+            LawSearchHits matchProvisionHits = elasticSearchPortal.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
                     pageNum, pageSize, null,
-                    new String[]{IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT}, null, searchSourceBuilderOfLaw);
+                    new String[]{IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT}, sortField, sortType, searchSourceBuilderOfLaw);
 
             /** 从查询结果中获取法律名称，并继续从es中获取历史 */
             Map<String, List<IntegralFields>> historyMap = this.makeLawProvisionHistory(matchProvisionHits, title);
@@ -633,14 +658,32 @@ public class PortalController extends BaseController {
             lawSearchHitsGroup.putLaw(level, integralHits);
         }
 
+
+        integralFields.setLawLevel(null);
+        Statistics statistics = new Statistics();
+        /** 统计不同状态下的匹配总数 */
+        List<StatisticsRecord> statusCountList = elasticSearchPortal.countGroupByStatus(ElasticSearchPortal.INDEX__LAW_PROVISION, integralFields);
+        statistics.put(IntegralFields.STATUS, statusCountList);
+
+        /** 统计不同效力级别下的匹配总数 */
+        List<StatisticsRecord> lawLevelCountList = elasticSearchPortal.countGroupByLawLevel(ElasticSearchPortal.INDEX__LAW_PROVISION, integralFields);
+        statistics.put(IntegralFields.LAW_LEVEL, lawLevelCountList);
+
+        /** 统计不同制定机关所在省级别下的匹配总数 */
+        List<StatisticsRecord> provinceCountList = elasticSearchPortal.countGroupByAuthorityProvince(ElasticSearchPortal.INDEX__LAW_PROVISION, integralFields);
+        statistics.put(IntegralFields.AUTHORITY_PROVINCE, provinceCountList);
+        lawSearchHitsGroup.setStatistics(statistics);
+
         return R.ok(lawSearchHitsGroup);
     }
+
+
 
 
     /**
      * 自动提示
      *
-     * http://localhost:8080/structured-law/portal/suggest?field=["law_name"]&text=中国
+     * [已测]http://localhost:8080/structured-law/portal/suggest?field=["law_name"]&text=中国
      *
      * @param text
      * @return
@@ -668,7 +711,7 @@ public class PortalController extends BaseController {
         Set<SuggestHits> suggestions = new HashSet<>();
         for(String suggestField : fieldArray) {
             suggestField = suggestField + ".suggest";
-            List<SuggestHits> textSuggest = elasticSearchSrv.suggest(ElasticSearchPortal.INDEX__LAW_PROVISION, suggestField, text,
+            List<SuggestHits> textSuggest = elasticSearchPortal.suggest(ElasticSearchPortal.INDEX__LAW_PROVISION, suggestField, text,
                     new String[]{ IntegralFields.PROVISION_ID, IntegralFields.LAW_ID }, null);
             suggestions.addAll(textSuggest);
         }
@@ -700,9 +743,9 @@ public class PortalController extends BaseController {
         }
 
         try {
-            elasticSearchSrv.initAllIndex();
+            elasticSearchPortal.initAllIndex();
             Thread.sleep(5000);
-            elasticSearchSrv.importDataToAllIndex();
+            elasticSearchPortal.importDataToAllIndex();
             return success();
         }
         catch (Exception e) {
@@ -721,7 +764,7 @@ public class PortalController extends BaseController {
     @PutMapping("/deleteIndex")
     public AjaxResult deleteIndex() {
         try {
-            elasticSearchSrv.deleteAllIndex();
+            elasticSearchPortal.deleteAllIndex();
         } catch (Exception e) {
             logger.error("", e);
             return error(e.getMessage());

@@ -1,5 +1,7 @@
 package com.ruoyi.web.controller.law.api.domain.resp;
 
+import com.ruoyi.web.controller.law.api.domain.inner.Statistics;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,11 +17,24 @@ public class LawSearchHitsGroup {
      */
     private Map<String, IntegralHits> law = new HashMap<>();
 
+    /**
+     * 统计
+     */
+    private Statistics statistics;
+
     public Map<String, IntegralHits> getLaw() {
         return law;
     }
 
     public void putLaw(String key, IntegralHits hits) {
         this.law.put(key, hits);
+    }
+
+    public Statistics getStatistics() {
+        return statistics;
+    }
+
+    public void setStatistics(Statistics statistics) {
+        this.statistics = statistics;
     }
 }

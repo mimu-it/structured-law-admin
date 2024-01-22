@@ -8,6 +8,8 @@ import com.ruoyi.system.service.ISlLawService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
+
 
 /**
  * 法律信息Service业务层处理
@@ -18,7 +20,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SlLawServiceImpl implements ISlLawService
 {
-    @Autowired
+    @Resource
     private SlLawMapper slLawMapper;
 
 

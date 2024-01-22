@@ -42,12 +42,6 @@ public class LawSearchHits {
     private List<IntegralFields> searchHits;
 
     /**
-     * 统计
-     */
-    @ApiModelProperty(value="统计")
-    private Statistics statistics;
-
-    /**
      * 关联的文章
      */
     @ApiModelProperty(value="关联的文章")
@@ -75,14 +69,6 @@ public class LawSearchHits {
 
     public void setSearchHits(List<IntegralFields> searchHits) {
         this.searchHits = searchHits;
-    }
-
-    public Statistics getStatistics() {
-        return statistics;
-    }
-
-    public void setStatistics(Statistics statistics) {
-        this.statistics = statistics;
     }
 
     public Article getArticle() {

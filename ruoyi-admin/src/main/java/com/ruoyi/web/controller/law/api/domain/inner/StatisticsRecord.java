@@ -9,17 +9,8 @@ package com.ruoyi.web.controller.law.api.domain.inner;
  */
 public class StatisticsRecord {
 
-    private Long id;
     private String name;
-    private Integer total;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
+    private Long total;
 
     public String getName() {
         return name;
@@ -29,11 +20,11 @@ public class StatisticsRecord {
         this.name = name;
     }
 
-    public Integer getTotal() {
+    public Long getTotal() {
         return total;
     }
 
-    public void setTotal(Integer total) {
+    public void setTotal(Long total) {
         this.total = total;
     }
 }

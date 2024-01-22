@@ -20,7 +20,7 @@ public class LawDetail {
     private String status;
     private String documentNo;
     private String according;
-    private String title;
+    private String lawName;
     private List<IntegralFields> provisions;
 
     private Map<String, List<IntegralFields>> historyMap;
@@ -90,12 +90,12 @@ public class LawDetail {
         this.according = according;
     }
 
-    public String getTitle() {
-        return title;
+    public String getLawName() {
+        return lawName;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
+    public void setLawName(String lawName) {
+        this.lawName = lawName;
     }
 
     public List<IntegralFields> getProvisions() {

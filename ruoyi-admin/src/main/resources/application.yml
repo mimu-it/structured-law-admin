@@ -28,7 +28,7 @@ spring:
     basename: i18n/messages
   profiles:
     # 区分开发环境、测试环境的配置
-    active: prod
+    active: druid
   jackson:
     # 响应不传null值属性
     # default-property-inclusion: non_null

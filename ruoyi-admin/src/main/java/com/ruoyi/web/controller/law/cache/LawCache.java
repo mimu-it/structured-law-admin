@@ -21,6 +21,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -152,5 +153,20 @@ public class LawCache {
         RedisCache redisCache = SpringUtils.getBean(RedisCache.class);
         List<Integer> statusList = redisCache.getCacheObject(getConditionOptionsCacheKey(SlLaw.STATUS));
         return statusList.stream().map((statusNumber) -> String.valueOf(statusNumber)).collect(Collectors.toList());
+    }
+
+    /**
+     * TODO 放入数据字典
+     * @return
+     */
+    public Map<Integer, String> getStatusOptionsMap() {
+        Map<Integer, String> map = new HashMap<>(4);
+        map.put(1, "有效");
+        map.put(3, "尚未生效");
+        map.put(5, "已修改");
+        map.put(9, "已废止");
+        map.put(7, "未知");
+        map.put(0, "无");
+        return map;
     }
 }

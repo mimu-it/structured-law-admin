@@ -35,6 +35,12 @@ public interface ISlLawService
     public SlLaw selectSlLawById(Long id);
 
 
+    /**
+     *
+     * @param id
+     * @param columns
+     * @return
+     */
     SlLaw getById(Long id, String[] columns);
 
     /**
