@@ -1,17 +1,15 @@
 package com.ruoyi.web.controller.law.cache;
 
 import cn.hutool.core.lang.TypeReference;
-import cn.hutool.json.JSON;
 import cn.hutool.json.JSONUtil;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.redis.RedisCache;
-import com.ruoyi.common.utils.file.JarFileReaderUtils;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.service.ISlLawCategoryService;
 import com.ruoyi.system.service.ISlLawService;
-import com.ruoyi.web.controller.law.api.domain.inner.AuthorityTreeNode;
+import com.ruoyi.web.controller.law.api.domain.inner.TreeNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -63,7 +61,7 @@ public class LawCache {
         List<Integer> statusOptions = slLawService.listStatus();
         redisCache.setCacheObject(getConditionOptionsCacheKey(SlLaw.STATUS), statusOptions);
 
-        List<AuthorityTreeNode> authorityTree = this.initAuthorityTree();
+        List<TreeNode> authorityTree = this.initAuthorityTree();
         redisCache.setCacheObject(getConditionOptionsCacheKey(Constants.AUTHORITY_TREE), authorityTree);
         //TODO 征集状态是啥
     }
@@ -108,10 +106,10 @@ public class LawCache {
      * 初始化制定机关的树
      * @return
      */
-    private List<AuthorityTreeNode> initAuthorityTree() {
+    private List<TreeNode> initAuthorityTree() {
         try {
             String configStr = readConfig("authority/tree.json");
-            return JSONUtil.toBean(configStr, new TypeReference<List<AuthorityTreeNode>>() {}, false);
+            return JSONUtil.toBean(configStr, new TypeReference<List<TreeNode>>() {}, false);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -121,7 +119,7 @@ public class LawCache {
      * 读取制定机关的树
      * @return
      */
-    public List<AuthorityTreeNode> getAuthorityTree() {
+    public List<TreeNode> getAuthorityTree() {
         RedisCache redisCache = SpringUtils.getBean(RedisCache.class);
         return redisCache.getCacheObject(getConditionOptionsCacheKey(Constants.AUTHORITY_TREE));
     }

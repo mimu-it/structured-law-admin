@@ -13,16 +13,20 @@ import com.ruoyi.common.core.domain.R;
 import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.law.api.domain.inner.ProvisionTreeNode;
 import com.ruoyi.web.controller.law.api.domain.inner.Statistics;
 import com.ruoyi.web.controller.law.api.domain.inner.StatisticsRecord;
 import com.ruoyi.web.controller.law.api.domain.resp.*;
 import com.ruoyi.web.controller.law.cache.LawCache;
 import com.ruoyi.web.controller.law.srv.ElasticSearchPortal;
-import io.swagger.annotations.*;
+import com.ruoyi.web.controller.law.srv.PortalSrv;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -46,7 +50,7 @@ import java.util.regex.Pattern;
  * 查看接口文档 http://localhost:8080/swagger-ui/index.html#/portal-controller
  *
  */
-@Api("法派法库服务接口")
+@Api("法能手法库服务接口")
 @RestController
 @RequestMapping("/structured-law/portal")
 public class PortalController extends BaseController {
@@ -60,6 +64,9 @@ public class PortalController extends BaseController {
 
     @Resource
     private ElasticSearchPortal elasticSearchPortal;
+
+    @Resource
+    private PortalSrv portalSrv;
 
     @Resource
     private ISlLawService slLawService;
@@ -164,7 +171,9 @@ public class PortalController extends BaseController {
                     IntegralFields.LAW_NAME,
                     IntegralFields.PUBLISH,
                     IntegralFields.VALID_FROM,
-                    IntegralFields.STATUS
+                    IntegralFields.STATUS,
+                    IntegralFields.TITLE,
+                    IntegralFields.TERM_TEXT
             });
 
             if(!matchHistoryList.isEmpty()) {
@@ -353,6 +362,7 @@ public class PortalController extends BaseController {
         /** 首先获取法律的所有条款数据，其实已经自带全文结构树 */
         List<IntegralFields> matchList = elasticSearchPortal.listProvisionsByLawId(lawId, null, size, new String[]{
                 IntegralFields.TITLE,
+                IntegralFields.TAGS,
                 IntegralFields.TERM_TEXT,
                 IntegralFields.LAW_NAME,
                 IntegralFields.LAW_ID,
@@ -360,6 +370,7 @@ public class PortalController extends BaseController {
                 IntegralFields.AUTHORITY
         });
 
+        List<ProvisionTreeNode> provisionTree = portalSrv.makeProvisionTree(lawId);
 
         /** 从查询结果中获取法律名称，并继续从es中获取历史 */
         Map<String, List<IntegralFields>> historyMap = this.makeLawHistory(matchList);
@@ -383,6 +394,10 @@ public class PortalController extends BaseController {
         }
 
         lawDetail.setStatus(String.valueOf(matchedItem.getStatus()));
+        if(lawDetail.getStatus() != null) {
+            lawDetail.setStatusLabel(lawCache.getStatusOptionsMap().get(lawDetail.getStatus()));
+        }
+
         lawDetail.setLawName(matchedItem.getLawName());
 
         if (matchedItem.getValidFrom() != null) {
@@ -391,6 +406,7 @@ public class PortalController extends BaseController {
 
         lawDetail.setHistoryMap(historyMap);
         lawDetail.setAssociatedFileMap(associatedFileMap);
+        lawDetail.setProvisionTree(provisionTree);
 
         return R.ok(lawDetail);
     }
@@ -421,6 +437,7 @@ public class PortalController extends BaseController {
                 IntegralFields.DOCUMENT_NO,
                 IntegralFields.TITLE,
                 IntegralFields.TERM_TEXT,
+                IntegralFields.TAGS,
                 IntegralFields.PROVISION_ID
         });
 
@@ -461,11 +478,13 @@ public class PortalController extends BaseController {
     @ApiOperation(value="查询某个法律的历史变更")
     @ApiImplicitParams({
             @ApiImplicitParam(name = IntegralFields.LAW_ID, value = "法律id", dataType = "long", dataTypeClass = Long.class),
+            @ApiImplicitParam(name = IntegralFields.TITLE, value = "法条小标题(eg. 第十二条)", dataType = "String", dataTypeClass = String.class),
             @ApiImplicitParam(name = Constants.SIZE, value = "显示的条款数量(eg. 1000)", dataType = "int", dataTypeClass = Integer.class),
     })
     @GetMapping("/law-history")
     public R<List<IntegralFields>> listLawHistory(@RequestParam(IntegralFields.LAW_ID) long lawId,
-                                     @RequestParam(value = Constants.SIZE, required = false) Integer size) {
+                                                  @RequestParam(value = IntegralFields.TITLE, required = false) String title,
+                                                  @RequestParam(value = Constants.SIZE, required = false) Integer size) {
         SlLaw law = slLawService.getById(lawId, new String[]{
                 SlLaw.NAME
         });
@@ -474,14 +493,47 @@ public class PortalController extends BaseController {
             return R.ok(new ArrayList<>());
         }
 
-        List<IntegralFields> matchList = elasticSearchPortal.listLawHistory(law.getName(), size, new String[]{
-                IntegralFields.LAW_ID,
-                IntegralFields.LAW_NAME,
-                IntegralFields.STATUS,
-                IntegralFields.PUBLISH,
-                IntegralFields.VALID_FROM
-        });
-        return R.ok(matchList);
+        if(StrUtil.isBlank(title)) {
+            /** 如果没有title， 就不查询条款 */
+            List<IntegralFields> matchList = elasticSearchPortal.listLawHistory(law.getName(), size, new String[]{
+                    IntegralFields.LAW_ID,
+                    IntegralFields.LAW_NAME,
+                    IntegralFields.STATUS,
+                    IntegralFields.PUBLISH,
+                    IntegralFields.VALID_FROM
+            });
+
+
+            return R.ok(matchList);
+        }
+
+        /** 查询条款 */
+        /** 构造es查询条件 */
+        IntegralFields integralFields = new IntegralFields();
+        integralFields.setLawId(lawId);
+        integralFields.setTitle(title);
+        SearchSourceBuilder searchSourceBuilderOfLaw = elasticSearchPortal.mustConditions(ElasticSearchPortal.INDEX__LAW_PROVISION, integralFields);
+        /** 查询es */
+        size = size == null ? 10 : size;
+        LawSearchHits matchProvisionHits = elasticSearchPortal.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION,
+                1, size, null,
+                new String[]{IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT}, IntegralFields.PUBLISH, false, searchSourceBuilderOfLaw);
+
+        /** 从查询结果中获取法律名称，并继续从es中获取历史 */
+        Map<String, List<IntegralFields>> historyMap = this.makeLawProvisionHistory(matchProvisionHits, title);
+        if(historyMap.size() == 0) {
+            return R.ok(new ArrayList<>());
+        }
+
+        if(historyMap.size() > 1) {
+            throw new IllegalStateException("too many laws matched");
+        }
+
+        for (String key : historyMap.keySet()){
+            return R.ok(historyMap.get(key));
+        }
+
+        return R.ok(new ArrayList<>());
     }
 
 
@@ -590,6 +642,8 @@ public class PortalController extends BaseController {
             if(StrUtil.isBlank(integralFields.getTermText())) {
                 integralFields.setTermText(contentText);
             }
+
+            integralFields.setTags(Arrays.asList(contentText));
         }
 
         if (StrUtil.isNotBlank(title)) {
@@ -710,9 +764,19 @@ public class PortalController extends BaseController {
 
         Set<SuggestHits> suggestions = new HashSet<>();
         for(String suggestField : fieldArray) {
-            suggestField = suggestField + ".suggest";
+            /** 先去刑法中找 */
+            List<SuggestHits> textSuggestFromTags = elasticSearchPortal.suggest(ElasticSearchPortal.INDEX__LAW_PROVISION_TAGS, IntegralFields.TAG, text,
+                    true, new String[]{ IntegralFields.LAW_ID, IntegralFields.PROVISION_ID }, null);
+
+            if(!textSuggestFromTags.isEmpty()) {
+                /** 刑法中找到了直接返回 */
+                suggestions.addAll(textSuggestFromTags);
+                return R.ok(suggestions);
+            }
+
+            /** 从刑法中找不到，再去别的地方找 */
             List<SuggestHits> textSuggest = elasticSearchPortal.suggest(ElasticSearchPortal.INDEX__LAW_PROVISION, suggestField, text,
-                    new String[]{ IntegralFields.PROVISION_ID, IntegralFields.LAW_ID }, null);
+                    false, new String[]{ IntegralFields.PROVISION_ID, IntegralFields.LAW_ID }, null);
             suggestions.addAll(textSuggest);
         }
 

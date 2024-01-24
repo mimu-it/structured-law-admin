@@ -28,8 +28,11 @@ public class SlLawProvision extends BaseEntity
     private String title;
 
     /** 数字条款标题 */
-    @Excel(name = " 数字条款标题")
+    @Excel(name = "数字条款标题")
     private String titleNumber;
+
+    @Excel(name = "标签，对于刑法来说，就是'组织诈骗罪'之类的")
+    private String tags;
 
     /** 条款正文 */
     @Excel(name = "条款正文")
@@ -81,6 +84,14 @@ public class SlLawProvision extends BaseEntity
         this.titleNumber = titleNumber;
     }
 
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -88,6 +99,7 @@ public class SlLawProvision extends BaseEntity
             .append("lawId", getLawId())
             .append("title", getTitle())
                 .append("titleNumber", getTitleNumber())
+                .append("tags", getTags())
             .append("termText", getTermText())
             .toString();
     }
@@ -97,6 +109,7 @@ public class SlLawProvision extends BaseEntity
     public static final String LAW_ID = "law_id";
     public static final String TITLE = "title";
     public static final String TITLE_NUMBER = "title_number";
+    public static final String TAGS = "tags";
     public static final String TERM_TEXT = "term_text";
 
     /*public static void main(String[] args) {

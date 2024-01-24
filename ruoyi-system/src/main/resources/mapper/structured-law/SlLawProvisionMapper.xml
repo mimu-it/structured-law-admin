@@ -13,12 +13,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="lawId"    column="law_id"    />
         <result property="title"    column="title"    />
         <result property="titleNumber"    column="title_number"    />
+        <result property="tags"    column="tags"    />
         <result property="termText"    column="term_text"    />
     </resultMap>
 
     <sql id="selectSlLawProvisionVo">
-        select id, create_time, create_by, update_time, update_by, law_id, title, title_number, term_text from sl_law_provision
+        select id, create_time, create_by, update_time, update_by, law_id, title, title_number, tags, term_text from sl_law_provision
     </sql>
+
+    <select id="count" resultType="int">
+        select count(*) from sl_law_provision
+    </select>
+
+    <select id="countTags" resultType="int">
+        select count(*) from sl_law_provision where tags != "" or tags != null
+    </select>
+
+    <select id="selectSlLawProvisionTagsList" resultMap="SlLawProvisionResult">
+        <include refid="selectSlLawProvisionVo"/>
+        where tags != "" or tags != null
+    </select>
 
     <select id="selectSlLawProvisionList" parameterType="SlLawProvision" resultMap="SlLawProvisionResult">
         <include refid="selectSlLawProvisionVo"/>
@@ -44,6 +58,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lawId != null">law_id,</if>
             <if test="title != null and title != ''">title,</if>
             <if test="titleNumber != null  and titleNumber != ''">title_number,</if>
+            <if test="tags != null  and tags != ''">tags,</if>
             <if test="termText != null and termText != ''">term_text,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
@@ -54,6 +69,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lawId != null">#{lawId},</if>
             <if test="title != null and title != ''">#{title},</if>
             <if test="titleNumber != null  and titleNumber != ''">#{titleNumber},</if>
+            <if test="tags != null  and tags != ''">#{tags},</if>
             <if test="termText != null and termText != ''">#{termText},</if>
          </trim>
     </insert>
@@ -68,6 +84,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lawId != null">law_id = #{lawId},</if>
             <if test="title != null and title != ''">title = #{title},</if>
             <if test="titleNumber != null  and titleNumber != ''">title_number = #{titleNumber},</if>
+            <if test="tags != null  and tags != ''">tags = #{tags},</if>
             <if test="termText != null and termText != ''">term_text = #{termText},</if>
         </trim>
         where id = #{id}

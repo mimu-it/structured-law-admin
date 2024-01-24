@@ -22,6 +22,15 @@ public class SlLawCategoryServiceImpl implements ISlLawCategoryService
     private SlLawCategoryMapper slLawCategoryMapper;
 
     /**
+     *
+     * @return
+     */
+    @Override
+    public int count() {
+        return slLawCategoryMapper.count();
+    }
+
+    /**
      * 查询法库目录
      * 
      * @param id 法库目录主键

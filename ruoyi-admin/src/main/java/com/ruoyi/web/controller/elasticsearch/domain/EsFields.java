@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.elasticsearch.domain;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author xiao.hu
@@ -21,7 +22,9 @@ public interface EsFields {
 
     String getLawLevel();
 
-    String getTags();
+    List<String> getTags();
+
+    String getTag();
 
     Date getPublish();
 

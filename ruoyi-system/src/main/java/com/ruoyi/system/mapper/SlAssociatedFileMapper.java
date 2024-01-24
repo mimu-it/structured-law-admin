@@ -11,6 +11,13 @@ import com.ruoyi.system.domain.SlAssociatedFile;
  */
 public interface SlAssociatedFileMapper 
 {
+
+    /**
+     * 统计总数
+     * @return
+     */
+    int count();
+
     /**
      * 查询关联文件
      * 

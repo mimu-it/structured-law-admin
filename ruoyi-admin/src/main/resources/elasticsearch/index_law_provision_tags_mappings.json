@@ -1,0 +1,34 @@
+{
+  "properties": {
+    "provision_id": {
+      "type": "long"
+    },
+    "law_id": {
+      "type": "long"
+    },
+    "law_name": {
+      "type": "text",
+      "analyzer": "ik_max_word",
+      "fields": {
+        "suggest": {
+          "type":"completion"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "tag": {
+      "type": "text",
+      "analyzer": "ik_max_word",
+      "fields": {
+        "suggest": {
+          "type":"completion"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

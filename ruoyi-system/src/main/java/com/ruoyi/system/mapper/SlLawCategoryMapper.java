@@ -13,6 +13,14 @@ import org.apache.ibatis.annotations.Param;
  */
 public interface SlLawCategoryMapper 
 {
+
+    /**
+     * 统计总数
+     * @return
+     */
+    int count();
+
+
     /**
      * 查询法库目录
      * 

@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.elasticsearch.domain;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author xiao.hu
@@ -76,7 +77,14 @@ public class LawFields implements EsFields{
     }
 
     @Override
-    public String getTags() {
+    public List<String> getTags() {
+        /** law 暂不涉及这个属性 */
+        return null;
+    }
+
+    @Override
+    public String getTag(){
+        /** law 暂不涉及这个属性 */
         return null;
     }
 
@@ -222,4 +230,6 @@ public class LawFields implements EsFields{
     public void setDocumentNoArray(String[] documentNoArray) {
         this.documentNoArray = documentNoArray;
     }
+
+
 }

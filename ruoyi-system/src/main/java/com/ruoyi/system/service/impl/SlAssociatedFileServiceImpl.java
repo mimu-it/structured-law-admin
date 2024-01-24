@@ -8,6 +8,8 @@ import com.ruoyi.system.mapper.SlAssociatedFileMapper;
 import com.ruoyi.system.domain.SlAssociatedFile;
 import com.ruoyi.system.service.ISlAssociatedFileService;
 
+import javax.annotation.Resource;
+
 /**
  * 关联文件Service业务层处理
  * 
@@ -17,8 +19,13 @@ import com.ruoyi.system.service.ISlAssociatedFileService;
 @Service
 public class SlAssociatedFileServiceImpl implements ISlAssociatedFileService 
 {
-    @Autowired
+    @Resource
     private SlAssociatedFileMapper slAssociatedFileMapper;
+
+    @Override
+    public int count() {
+        return slAssociatedFileMapper.count();
+    }
 
     /**
      * 查询关联文件

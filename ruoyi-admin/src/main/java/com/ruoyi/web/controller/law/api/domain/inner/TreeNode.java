@@ -7,11 +7,11 @@ import java.util.List;
  * @date 2024-01-15
  * @apiNote
  */
-public class AuthorityTreeNode {
+public class TreeNode {
 
     private String label;
 
-    private List<AuthorityTreeNode> children;
+    private List<TreeNode> children;
 
     public String getLabel() {
         return label;
@@ -21,11 +21,11 @@ public class AuthorityTreeNode {
         this.label = label;
     }
 
-    public List<AuthorityTreeNode> getChildren() {
+    public List<TreeNode> getChildren() {
         return children;
     }
 
-    public void setChildren(List<AuthorityTreeNode> children) {
+    public void setChildren(List<TreeNode> children) {
         this.children = children;
     }
 }

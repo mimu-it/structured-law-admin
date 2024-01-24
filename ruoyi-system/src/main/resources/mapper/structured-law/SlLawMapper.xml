@@ -29,6 +29,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="preface"    column="preface"    />
     </resultMap>
 
+    <select id="count" resultType="int">
+        select count(*) from sl_law
+    </select>
+
     <select id="listAuthority" resultMap="SlLawResult">
         select distinct authority, authority_province, authority_city, authority_district from sl_law order by authority_province
     </select>

@@ -13,6 +13,12 @@ import com.ruoyi.system.domain.SlLawCategory;
 public interface ISlLawCategoryService 
 {
     /**
+     * 统计总数
+     * @return
+     */
+    int count();
+
+    /**
      * 查询法库目录
      * 
      * @param id 法库目录主键

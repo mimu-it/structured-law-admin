@@ -4,6 +4,9 @@ import cn.hutool.cache.CacheUtil;
 import cn.hutool.cache.impl.LFUCache;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.ruoyi.system.domain.SlAssociatedFile;
@@ -13,9 +16,11 @@ import com.ruoyi.system.service.ISlAssociatedFileService;
 import com.ruoyi.system.service.ISlLawProvisionService;
 import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.law.api.domain.inner.ProvisionTreeNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +41,9 @@ public class PortalSrv {
 
     @Autowired
     private ISlAssociatedFileService slAssociatedFileService;
+
+    @Resource
+    private ElasticSearchPortal elasticSearchPortal;
 
 
     /**
@@ -122,8 +130,57 @@ public class PortalSrv {
         integralFields.setPublish(law.getPublish());
         integralFields.setStatus(law.getStatus());
         integralFields.setValidFrom(law.getValidFrom());
-        integralFields.setTags(law.getTags());
         integralFields.setDocumentNo(law.getDocumentNo());
+    }
+
+    /**
+     * 从 Provision 中的 tags 字段中的json字符串值解析出来所有的标签
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    public Page<IntegralFields> listProvisionTagsByPage(int pageNum, int pageSize) {
+        PageHelper.startPage(pageNum, pageSize, null);
+
+        Page<SlLawProvision> list = (Page<SlLawProvision>) slLawProvisionService.selectSlLawProvisionTagsList();
+
+        List<IntegralFields> integralFieldsList = new ArrayList<>(list.size());
+        LFUCache<Long, SlLaw> cacheLaw = CacheUtil.newLFUCache(100);
+        for(SlLawProvision row : list) {
+            if(ObjectUtil.isNotNull(row.getLawId())) {
+                SlLaw law = cacheLaw.get(row.getLawId());
+                if(law == null) {
+                    law = slLawService.getById(row.getLawId(), new String[]{
+                            SlLaw.NAME
+                    });
+                    cacheLaw.put(row.getLawId(), law);
+                }
+
+                String tagsJsonStr = row.getTags();
+                if(StrUtil.isNotBlank(tagsJsonStr)) {
+                    // 解析JSON数组
+                    JSONArray jsonArray = JSONUtil.parseArray(tagsJsonStr);
+                    for (Object obj : jsonArray) {
+                        if (obj instanceof String) {
+                            IntegralFields integralFields = new IntegralFields();
+                            integralFields.setProvisionId(row.getId());
+                            integralFields.setLawId(row.getLawId());
+                            integralFields.setLawName(law.getName());
+                            integralFields.setTag((String) obj);
+
+                            integralFieldsList.add(integralFields);
+                        }
+                    }
+                }
+            }
+        }
+
+        Page<IntegralFields> newPage = new Page<>();
+        BeanUtil.copyProperties(list, newPage);
+        newPage.clear();
+        newPage.addAll(integralFieldsList);
+
+        return newPage;
     }
 
     /**
@@ -151,6 +208,20 @@ public class PortalSrv {
             integralFields.setTitle(row.getTitle());
             integralFields.setTitleNumber(row.getTitleNumber());
             integralFields.setTermText(row.getTermText());
+
+            List<String> tags = new ArrayList<>();
+            String tagsJsonStr = row.getTags();
+            if(StrUtil.isNotBlank(tagsJsonStr)) {
+                // 解析JSON数组
+                JSONArray jsonArray = JSONUtil.parseArray(tagsJsonStr);
+                for (Object obj : jsonArray) {
+                    if (obj instanceof String) {
+                        tags.add((String) obj);
+                    }
+                }
+            }
+
+            integralFields.setTags(tags);
 
             if(ObjectUtil.isNotNull(row.getLawId())) {
                 SlLaw law = cacheLaw.get(row.getLawId());
@@ -188,5 +259,59 @@ public class PortalSrv {
         newPage.addAll(integralFieldsList);
 
         return newPage;
+    }
+
+    /**
+     * 将扁平数据构造成树
+     * @param lawId
+     * @return
+     */
+    public List<ProvisionTreeNode> makeProvisionTree(long lawId) {
+        List<IntegralFields> provisionList = elasticSearchPortal.listProvisionsByLawId(lawId, null, 10000, new String[]{
+                IntegralFields.TITLE,
+                IntegralFields.TERM_TEXT,
+                IntegralFields.LAW_NAME,
+                IntegralFields.LAW_ID,
+                IntegralFields.PROVISION_ID,
+                IntegralFields.AUTHORITY
+        });
+
+        List<ProvisionTreeNode> allProvisionNode = new ArrayList<>();
+        for(IntegralFields provision : provisionList) {
+            String title = provision.getTitle();
+            int lastIndex = title.lastIndexOf("/");
+            String label = title.substring(lastIndex + 1);
+
+            String parentPath = "";
+            if(lastIndex != -1) {
+                parentPath = title.substring(0, lastIndex);
+            }
+
+            ProvisionTreeNode node = new ProvisionTreeNode();
+            node.setLabel(label);
+            node.setParentPath(parentPath);
+            node.setFullPath(title);
+            node.setTermText(provision.getTermText());
+            allProvisionNode.add(node);
+        }
+
+        List<ProvisionTreeNode> treeList = new ArrayList<>();
+        for(ProvisionTreeNode node : allProvisionNode) {
+            if("".equals(node.getParentPath())) {
+                treeList.add(node);
+            }
+
+            for(ProvisionTreeNode nodeForChild : allProvisionNode) {
+                if(nodeForChild.getParentPath().equals(node.getFullPath())) {
+                    if(node.getChildren() == null) {
+                        node.setChildren(new ArrayList<>());
+                    }
+
+                    node.getChildren().add(nodeForChild);
+                }
+            }
+        }
+
+        return treeList;
     }
 }

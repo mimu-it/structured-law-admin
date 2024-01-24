@@ -17,6 +17,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="categoryOrder"    column="category_order"    />
     </resultMap>
 
+    <select id="count" resultType="int">
+        select count(*) from sl_law_category
+    </select>
+
     <sql id="selectSlLawCategoryVo">
         select id, create_time, create_by, update_time, update_by, name, folder, is_sub_folder, category_group, category_order from sl_law_category
     </sql>

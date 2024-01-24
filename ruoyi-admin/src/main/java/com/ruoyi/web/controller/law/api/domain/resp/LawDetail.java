@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.law.api.domain.resp;
 
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.law.api.domain.inner.ProvisionTreeNode;
 
 import java.util.List;
 import java.util.Map;
@@ -18,10 +19,12 @@ public class LawDetail {
     private String publishAt;
     private String validFrom;
     private String status;
+    private String statusLabel;
     private String documentNo;
     private String according;
     private String lawName;
     private List<IntegralFields> provisions;
+    private List<ProvisionTreeNode> provisionTree;
 
     private Map<String, List<IntegralFields>> historyMap;
     private Map<Long, List<IntegralFields>> associatedFileMap;
@@ -74,6 +77,14 @@ public class LawDetail {
         this.status = status;
     }
 
+    public String getStatusLabel() {
+        return statusLabel;
+    }
+
+    public void setStatusLabel(String statusLabel) {
+        this.statusLabel = statusLabel;
+    }
+
     public String getDocumentNo() {
         return documentNo;
     }
@@ -120,5 +131,13 @@ public class LawDetail {
 
     public void setAssociatedFileMap(Map<Long, List<IntegralFields>> associatedFileMap) {
         this.associatedFileMap = associatedFileMap;
+    }
+
+    public List<ProvisionTreeNode> getProvisionTree() {
+        return provisionTree;
+    }
+
+    public void setProvisionTree(List<ProvisionTreeNode> provisionTree) {
+        this.provisionTree = provisionTree;
     }
 }

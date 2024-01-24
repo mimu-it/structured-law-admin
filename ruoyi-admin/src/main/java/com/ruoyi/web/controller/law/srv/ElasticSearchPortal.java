@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.law.srv;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -11,8 +12,8 @@ import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
-import com.ruoyi.web.controller.law.api.domain.inner.AuthorityTreeNode;
 import com.ruoyi.web.controller.law.api.domain.inner.StatisticsRecord;
+import com.ruoyi.web.controller.law.api.domain.inner.TreeNode;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
 import com.ruoyi.web.controller.law.api.domain.resp.SuggestHits;
 import com.ruoyi.web.controller.law.cache.LawCache;
@@ -52,8 +53,8 @@ import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
+import org.elasticsearch.search.suggest.SuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -74,6 +75,7 @@ public class ElasticSearchPortal {
 
     public static final String INDEX__LAW = "law";
     public static final String INDEX__LAW_PROVISION = "law_provision";
+    public static final String INDEX__LAW_PROVISION_TAGS = "law_provision_tags";
     public static final String INDEX__LAW_ASSOCIATED_FILE = "law_associated_file";
 
     private static ObjectMapper mapper = new ObjectMapper();
@@ -92,6 +94,9 @@ public class ElasticSearchPortal {
     AbstractEsSrv esLawProvisionSrv;
 
     @Resource
+    AbstractEsSrv esLawProvisionTagsSrv;
+
+    @Resource
     AbstractEsSrv esLawAssociatedFileSrv;
 
     @Resource
@@ -103,6 +108,7 @@ public class ElasticSearchPortal {
     public void initSrvMapping() {
         srvMap.put(INDEX__LAW, esLawSrv);
         srvMap.put(INDEX__LAW_PROVISION, esLawProvisionSrv);
+        srvMap.put(INDEX__LAW_PROVISION_TAGS, esLawProvisionTagsSrv);
         srvMap.put(INDEX__LAW_ASSOCIATED_FILE, esLawAssociatedFileSrv);
     }
 
@@ -128,6 +134,7 @@ public class ElasticSearchPortal {
     public void initAllIndex() {
         initIndex(INDEX__LAW);
         initIndex(INDEX__LAW_PROVISION);
+        initIndex(INDEX__LAW_PROVISION_TAGS);
         initIndex(INDEX__LAW_ASSOCIATED_FILE);
     }
 
@@ -184,6 +191,12 @@ public class ElasticSearchPortal {
         }
 
         try {
+            allSuccess = allSuccess && this.deleteIndex(INDEX__LAW_PROVISION_TAGS);
+        } catch (Exception e) {
+            logger.error("delete law provision tags index failed");
+        }
+
+        try {
             allSuccess = allSuccess && this.deleteIndex(INDEX__LAW_ASSOCIATED_FILE);
         } catch (Exception e) {
             logger.error("delete law associated file index failed");
@@ -217,19 +230,28 @@ public class ElasticSearchPortal {
      * excludeFields 控制显示内容 (优化查询效率将所有无关查询提示字段都不显示)
      * @return
      */
-    public List<SuggestHits> suggest(String indexName, String suggestField, String suggestValue, String[] includeFields, String[] excludeFields) {
-        String suggestionName = suggestField + "_suggest";
+    public List<SuggestHits> suggest(String indexName, String suggestField, String suggestValue, boolean isPhraseSuggest, String[] includeFields, String[] excludeFields) {
+        String suggestFieldDotSuggest = suggestField + ".suggest";
+        String suggestionName = suggestFieldDotSuggest + "_suggest";
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.fetchSource(includeFields, excludeFields);
 
-        // 构建completionSuggestionBuilder传入查询的参数
-        CompletionSuggestionBuilder completionSuggestionBuilder = SuggestBuilders.completionSuggestion(suggestField)
-                .skipDuplicates(true).prefix(suggestValue).size(10);
+        SuggestionBuilder<?> suggestionBuilder;
+        if(!isPhraseSuggest) {
+            // 构建completionSuggestionBuilder传入查询的参数
+            /** Completion Suggester：它主要针对的应用场景就是"Auto Completion"，FST数据结构，类似Trie树，不用打开倒排，快速返回，前缀匹配 */
+            suggestionBuilder = SuggestBuilders.completionSuggestion(suggestFieldDotSuggest)
+                    .skipDuplicates(true).prefix(suggestValue).size(10);
+        }
+        else {
+            return this.phraseSuggest(indexName, suggestField, suggestValue, includeFields);
+        }
+
 
         SuggestBuilder suggestBuilder = new SuggestBuilder();
         // 定义查询的suggest名称
-        suggestBuilder.addSuggestion(suggestionName, completionSuggestionBuilder);
+        suggestBuilder.addSuggestion(suggestionName, suggestionBuilder);
         searchSourceBuilder.suggest(suggestBuilder);
 
         /** 构建SearchRequest 指定查询的库 */
@@ -280,6 +302,43 @@ public class ElasticSearchPortal {
         return Arrays.asList(suggestSet.toArray(new SuggestHits[]{}));
     }
 
+    /**
+     * 直接用分词查询模拟自动提示
+     * 返回的建议 text 可能一样，但是对应的文章不一样
+     * @return
+     */
+    private List<SuggestHits> phraseSuggest(String indexName, String suggestField, String text, String[] includeFields) {
+        SearchRequest searchRequest = new SearchRequest(indexName);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(suggestField, text));
+
+        searchSourceBuilder.query(boolQueryBuilder);
+
+        List<IntegralFields> list = this.searchToList(20, includeFields,
+                new String[]{ IntegralFields.TAG},
+                searchRequest, searchSourceBuilder);
+
+        Set<SuggestHits> suggestSet = new HashSet<>();
+        for(IntegralFields integralFields : list) {
+            SuggestHits suggestHits = new SuggestHits();
+            suggestHits.setText(integralFields.getTag());
+
+            Map<String, Object> extraData = new HashMap<>(includeFields.length);
+
+            Map<String, Object> objectMap = BeanUtil.beanToMap(integralFields, true, true);
+            for(String key : includeFields) {
+                extraData.put(key, objectMap.get(key));
+            }
+            suggestHits.setExtraData(extraData);
+
+            suggestSet.add(suggestHits);
+        }
+
+        return Arrays.asList(suggestSet.toArray(new SuggestHits[]{}));
+    }
 
     /**
      * 新建索引
@@ -307,6 +366,7 @@ public class ElasticSearchPortal {
      * 把所有的索引都导入数据
      */
     public void importDataToAllIndex() {
+        bulkInsert(INDEX__LAW_PROVISION_TAGS);
         bulkInsert(INDEX__LAW_ASSOCIATED_FILE);
         bulkInsert(INDEX__LAW);
         bulkInsert(INDEX__LAW_PROVISION);
@@ -320,18 +380,21 @@ public class ElasticSearchPortal {
         String active = SpringUtils.getActiveProfile();
         boolean isProd = Constants.PROD.equals(active);
 
-        int pageNum = 0;
+        AbstractEsSrv esSrv = srvMap.get(indexName);
+        if(esSrv == null) {
+            throw new IllegalStateException("No es srv found");
+        }
+
+        int pageNum = 1;
         int pageSize = isProd? 1000 : 50;
+        int totalCount = esSrv.countData();
+        int totalPage = (totalCount + (pageSize - 1)) / pageSize;
+
         Page<IntegralFields> page = new Page<>();
         /**
          * 分页往 elasticsearch 中插入数据
          */
-        while (pageNum == 0 || page.size() > 0) {
-            if(pageNum != 0 && page.isEmpty()) {
-                /** 如果不是第0页，并且最近一次查询得到的数据是空的，说明遍历到尾了，应该退出 */
-                break;
-            }
-
+        while (pageNum <= totalPage) {
             if(!page.getResult().isEmpty()) {
                 /** 如果有数据，就批量插入 elasticsearch 中 */
                 try {
@@ -343,14 +406,8 @@ public class ElasticSearchPortal {
             }
 
             /** 查询当前页的数据 */
-            pageNum++;
-
-            AbstractEsSrv esSrv = srvMap.get(indexName);
-            if(esSrv == null) {
-                throw new IllegalStateException("No es srv found");
-            }
-
             page = esSrv.listDataByPage(pageNum, pageSize);
+            pageNum++;
         }
 
         logger.info(String.format("Import %s data completed, profile: %s", indexName, active));
@@ -824,7 +881,7 @@ public class ElasticSearchPortal {
         integralFields.setAuthorityDistrict(null);
 
         List<StatisticsRecord> resultList = new ArrayList<>();
-        List<AuthorityTreeNode> authorityTree = lawCache.getAuthorityTree();
+        List<TreeNode> authorityTree = lawCache.getAuthorityTree();
 
         Map<String, String[]> provinceValueMap = new HashMap<>();
         List<String> treeFlat = new ArrayList<>();
@@ -832,7 +889,7 @@ public class ElasticSearchPortal {
             String labelName = item.getLabel();
             if("全国人大及其常委会".equals(labelName)) {
                 List<String> authorityProvinceList = new ArrayList<>();
-                for(AuthorityTreeNode province : item.getChildren()) {
+                for(TreeNode province : item.getChildren()) {
                     authorityProvinceList.add(province.getLabel());
                 }
 
@@ -842,7 +899,7 @@ public class ElasticSearchPortal {
                 provinceValueMap.put(provinceForShow, provinceArray);
             }
             else {
-                List<AuthorityTreeNode> provinceList = item.getChildren();
+                List<TreeNode> provinceList = item.getChildren();
                 provinceList.forEach((ch) -> {
                     String provinceName = ch.getLabel();
                     treeFlat.add(provinceName);
@@ -852,10 +909,7 @@ public class ElasticSearchPortal {
 
         treeFlat.forEach((labelName) -> {
             String[] provinceArray = provinceValueMap.get(labelName);
-
             SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralFields);
-
-
             BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) searchSourceBuilder.query();
 
             if(provinceArray != null) {

@@ -32,6 +32,12 @@ public abstract class AbstractEsSrv {
     public abstract String getMappingConfig();
 
     /**
+     * 统计数据总数
+     * @return
+     */
+    public abstract int countData();
+
+    /**
      * 获取对应类型的数据
      * @param pageNum
      * @param pageSize

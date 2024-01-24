@@ -14,6 +14,11 @@ import java.util.List;
 public interface SlLawMapper 
 {
 
+    /**
+     * 统计总数
+     * @return
+     */
+    int count();
 
     /**
      * 获取制定机关选项

@@ -78,6 +78,14 @@
         }
       }
     },
+    "tags": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
     "term_text": {
       "type": "text",
       "analyzer": "ik_max_word",

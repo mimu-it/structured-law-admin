@@ -125,6 +125,7 @@
       <el-table-column label="所属法律" align="left" prop="_escaped__law_id" width="200"/>
       <el-table-column label="条款标题" align="left" prop="title" width="200"/>
       <el-table-column label="条款数字标题" align="left" prop="titleNumber" width="100"/>
+      <el-table-column label="标签" align="left" prop="tags" width="100"/>
       <el-table-column label="条款正文" align="left" prop="termText" />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width"  width="200">
         <template slot-scope="scope">
@@ -162,6 +163,9 @@
         </el-form-item>
         <el-form-item label="条款数字标题" prop="title">
           <el-input v-model="form.titleNumber" placeholder="请输入条款数字标题" />
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-input type="textarea" v-model="form.tags"></el-input>
         </el-form-item>
         <el-form-item label="条款正文">
           <el-input type="textarea" v-model="form.termText"></el-input>
@@ -282,6 +286,7 @@ export default {
         modifier: null,
         lawId: null,
         title: null,
+        tags: null,
         termText: null
       };
       this.resetForm("form");

@@ -11,6 +11,27 @@ import com.ruoyi.system.domain.SlLawProvision;
  */
 public interface ISlLawProvisionService 
 {
+
+    /**
+     * 统计总数
+     * @return
+     */
+    int count();
+
+    /**
+     * 统计有tags的总数
+     * @return
+     */
+    int countTags();
+
+
+    /**
+     * 查询法律条款标签列表
+     *
+     * @return 法律条款集合
+     */
+    List<SlLawProvision> selectSlLawProvisionTagsList();
+
     /**
      * 查询法律条款
      * 

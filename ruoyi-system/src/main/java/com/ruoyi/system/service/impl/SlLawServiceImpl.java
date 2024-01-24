@@ -23,6 +23,15 @@ public class SlLawServiceImpl implements ISlLawService
     @Resource
     private SlLawMapper slLawMapper;
 
+    /**
+     * 统计总数
+     * @return
+     */
+    @Override
+    public int count() {
+        return slLawMapper.count();
+    }
+
 
     @Override
     public List<SlLaw> listAuthority() {

@@ -7,6 +7,8 @@ import com.ruoyi.system.mapper.SlLawProvisionMapper;
 import com.ruoyi.system.domain.SlLawProvision;
 import com.ruoyi.system.service.ISlLawProvisionService;
 
+import javax.annotation.Resource;
+
 /**
  * 法律条款Service业务层处理
  * 
@@ -16,8 +18,28 @@ import com.ruoyi.system.service.ISlLawProvisionService;
 @Service
 public class SlLawProvisionServiceImpl implements ISlLawProvisionService 
 {
-    @Autowired
+    @Resource
     private SlLawProvisionMapper slLawProvisionMapper;
+
+    @Override
+    public int count() {
+        return slLawProvisionMapper.count();
+    }
+
+    /**
+     * 统计有tags的总数
+     * @return
+     */
+    @Override
+    public int countTags() {
+        return slLawProvisionMapper.countTags();
+    }
+
+    @Override
+    public List<SlLawProvision> selectSlLawProvisionTagsList() {
+        return slLawProvisionMapper.selectSlLawProvisionTagsList();
+    }
+
 
     /**
      * 查询法律条款

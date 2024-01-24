@@ -12,6 +12,24 @@ import com.ruoyi.system.domain.SlLawProvision;
 public interface SlLawProvisionMapper 
 {
     /**
+     * 统计总数
+     * @return
+     */
+    int count();
+
+    /**
+     * 统计tags
+     * @return
+     */
+    int countTags();
+
+    /**
+     * 获取有标签的Provision
+     * @return
+     */
+    List<SlLawProvision> selectSlLawProvisionTagsList();
+
+    /**
      * 查询法律条款
      * 
      * @param id 法律条款主键

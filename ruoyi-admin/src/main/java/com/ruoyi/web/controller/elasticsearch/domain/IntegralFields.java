@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.elasticsearch.domain;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author xiao.hu
@@ -24,7 +25,8 @@ public class IntegralFields extends SearchFields implements EsFields{
     private String authorityProvince;
     private String authorityCity;
     private String authorityDistrict;
-    private String tags;
+    private List<String> tags;
+    private String tag;
     private Date publish;
     private Date validFrom;
     private Integer status;
@@ -92,11 +94,20 @@ public class IntegralFields extends SearchFields implements EsFields{
     }
 
     @Override
-    public String getTags() {
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
+
+    @Override
+    public List<String> getTags() {
         return tags;
     }
 
-    public void setTags(String tags) {
+    public void setTags(List<String> tags) {
         this.tags = tags;
     }
 
@@ -271,6 +282,7 @@ public class IntegralFields extends SearchFields implements EsFields{
     public static final String AUTHORITY_CITY = "authority_city";
     public static final String AUTHORITY_DISTRICT = "authority_district";
     public static final String TAGS = "tags";
+    public static final String TAG = "tag";
     public static final String PUBLISH = "publish";
     public static final String STATUS = "status";
     public static final String STATUS_LABEL = "status_label";

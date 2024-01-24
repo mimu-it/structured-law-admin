@@ -21,6 +21,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select id, create_by, create_time, update_by, update_time, law_original_id, law_id, name, document_type, content from sl_associated_file
     </sql>
 
+    <select id="count" resultType="int">
+        select count(*) from sl_associated_file
+    </select>
+
+
     <select id="selectSlAssociatedFileList" parameterType="SlAssociatedFile" resultMap="SlAssociatedFileResult">
         <include refid="selectSlAssociatedFileVo"/>
         <where>  

@@ -12,6 +12,11 @@ import java.util.List;
  */
 public interface ISlLawService 
 {
+    /**
+     * 统计总数
+     * @return
+     */
+    int count();
 
     /**
      * 列举"制定机关"， 实际就是法规类型
