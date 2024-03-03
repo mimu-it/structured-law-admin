@@ -187,4 +187,5 @@ public class Constants
     public final static String PROD = "prod";
     public final static String SORT_FIELD = "sort_field";
     public final static String SORT_TYPE = "sort_type";
+    public final static String CHARGE = "charge";
 }

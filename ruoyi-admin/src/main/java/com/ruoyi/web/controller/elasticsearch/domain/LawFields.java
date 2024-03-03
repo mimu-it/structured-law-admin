@@ -9,7 +9,6 @@ import java.util.List;
  * @apiNote
  */
 public class LawFields implements EsFields{
-    private String esDocId;
     private Long lawId;
     private String lawName;
     private String subtitle;
@@ -31,22 +30,8 @@ public class LawFields implements EsFields{
     private String[] documentNoArray;
 
     @Override
-    public String getEsDocId() {
-        return esDocId;
-    }
-
-    public void setEsDocId(String esDocId) {
-        this.esDocId = esDocId;
-    }
-
-    @Override
     public Long getLawId() {
         return lawId;
-    }
-
-    @Override
-    public Long getProvisionId() {
-        return null;
     }
 
     public void setLawId(Long lawId) {
@@ -62,11 +47,6 @@ public class LawFields implements EsFields{
         this.lawName = lawName;
     }
 
-    @Override
-    public String getSubtitle() {
-        return subtitle;
-    }
-
     public void setSubtitle(String subtitle) {
         this.subtitle = subtitle;
     }
@@ -77,24 +57,23 @@ public class LawFields implements EsFields{
     }
 
     @Override
-    public List<String> getTags() {
-        /** law 暂不涉及这个属性 */
+    public Integer[] getStatusArray() {
         return null;
     }
 
     @Override
-    public String getTag(){
+    public String[] getAuthorityArray() {
+        return null;
+    }
+
+    @Override
+    public List<String> getTags() {
         /** law 暂不涉及这个属性 */
         return null;
     }
 
     public void setLawLevel(String lawLevel) {
         this.lawLevel = lawLevel;
-    }
-
-    @Override
-    public String getAuthority() {
-        return authority;
     }
 
     public void setAuthority(String authority) {
@@ -128,32 +107,12 @@ public class LawFields implements EsFields{
         this.authorityDistrict = authorityDistrict;
     }
 
-    @Override
-    public Date getPublish() {
-        return publish;
-    }
-
     public void setPublish(Date publish) {
         this.publish = publish;
     }
 
-    @Override
-    public String getPublishRange() {
-        return publishRange;
-    }
-
     public void setPublishRange(String publishRange) {
         this.publishRange = publishRange;
-    }
-
-    @Override
-    public Date getValidFrom() {
-        return validFrom;
-    }
-
-    @Override
-    public String getTitle() {
-        return null;
     }
 
     @Override
@@ -165,37 +124,12 @@ public class LawFields implements EsFields{
         this.validFrom = validFrom;
     }
 
-    @Override
-    public String getValidFromRange() {
-        return validFromRange;
-    }
-
     public void setValidFromRange(String validFromRange) {
         this.validFromRange = validFromRange;
     }
 
-    @Override
-    public Integer getStatus() {
-        return status;
-    }
-
-    @Override
-    public String getTitleNumber() {
-        return null;
-    }
-
-    @Override
-    public String getPreface() {
-        return null;
-    }
-
     public void setStatus(Integer status) {
         this.status = status;
-    }
-
-    @Override
-    public String getDocumentNo() {
-        return documentNo;
     }
 
     @Override
@@ -225,6 +159,16 @@ public class LawFields implements EsFields{
     @Override
     public String[] getDocumentNoArray() {
         return documentNoArray;
+    }
+
+    @Override
+    public String[] getPublishRange() {
+        return new String[0];
+    }
+
+    @Override
+    public String[] getValidFromRange() {
+        return new String[0];
     }
 
     public void setDocumentNoArray(String[] documentNoArray) {

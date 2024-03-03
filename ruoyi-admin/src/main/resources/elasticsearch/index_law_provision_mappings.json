@@ -52,10 +52,6 @@
       "type": "date",
       "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
     },
-    "preface": {
-      "type": "text",
-      "analyzer": "ik_max_word"
-    },
     "title": {
       "type": "text",
       "analyzer": "ik_max_word",

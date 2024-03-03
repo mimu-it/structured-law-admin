@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.law.api.domain.resp;
 
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.law.api.domain.inner.ProvisionHistory;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
 
 import java.util.List;
@@ -14,7 +15,7 @@ import java.util.Map;
 public class IntegralHits {
 
     private LawSearchHits hits;
-    private Map<String, List<IntegralFields>> historyMap;
+    private Map<String, ProvisionHistory> history;
     private Map<Long, List<IntegralFields>> associatedFileMap;
 
     public LawSearchHits getHits() {
@@ -25,12 +26,12 @@ public class IntegralHits {
         this.hits = hits;
     }
 
-    public Map<String, List<IntegralFields>> getHistoryMap() {
-        return historyMap;
+    public Map<String, ProvisionHistory> getHistory() {
+        return history;
     }
 
-    public void setHistoryMap(Map<String, List<IntegralFields>> historyMap) {
-        this.historyMap = historyMap;
+    public void setHistory(Map<String, ProvisionHistory> history) {
+        this.history = history;
     }
 
     public Map<Long, List<IntegralFields>> getAssociatedFileMap() {

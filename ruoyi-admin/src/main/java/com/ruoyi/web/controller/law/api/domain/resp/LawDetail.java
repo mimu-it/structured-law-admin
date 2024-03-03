@@ -25,6 +25,7 @@ public class LawDetail {
     private String lawName;
     private List<IntegralFields> provisions;
     private List<ProvisionTreeNode> provisionTree;
+    private String fullContent;
 
     private Map<String, List<IntegralFields>> historyMap;
     private Map<Long, List<IntegralFields>> associatedFileMap;
@@ -139,5 +140,13 @@ public class LawDetail {
 
     public void setProvisionTree(List<ProvisionTreeNode> provisionTree) {
         this.provisionTree = provisionTree;
+    }
+
+    public String getFullContent() {
+        return fullContent;
+    }
+
+    public void setFullContent(String fullContent) {
+        this.fullContent = fullContent;
     }
 }

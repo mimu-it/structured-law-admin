@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.law.api.domain.resp;
 import com.ruoyi.web.controller.law.api.domain.inner.TreeNode;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author xiao.hu
@@ -19,7 +20,7 @@ public class LawSearchConditionOptions {
      * TODO 数据从哪来？  爬虫爬取过程中新增而来？ 爬取哪个值？
      */
     private List<Long> classificationOptions;
-    private List<String> statusOptions;
+    private Map<Integer, String> statusOptions;
     private List<String> collectStatusOptions;
 
     public List<String> getAuthorityOptions() {
@@ -46,11 +47,11 @@ public class LawSearchConditionOptions {
         this.classificationOptions = classificationOptions;
     }
 
-    public List<String> getStatusOptions() {
+    public Map<Integer, String> getStatusOptions() {
         return statusOptions;
     }
 
-    public void setStatusOptions(List<String> statusOptions) {
+    public void setStatusOptions(Map<Integer, String> statusOptions) {
         this.statusOptions = statusOptions;
     }
 

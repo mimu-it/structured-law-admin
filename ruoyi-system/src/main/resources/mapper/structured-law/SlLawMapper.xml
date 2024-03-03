@@ -27,6 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="ver"    column="ver"    />
         <result property="tags"    column="tags"    />
         <result property="preface"    column="preface"    />
+        <result property="fullContent"    column="full_content"    />
     </resultMap>
 
     <select id="count" resultType="int">
@@ -44,7 +45,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <sql id="selectSlLawVo">
         select id, create_time, create_by, update_time, update_by, category_id, name, law_level,
                authority, authority_province, authority_city, authority_district, publish, status, law_order, subtitle,
-               document_no, document_type, valid_from, ver, tags, preface from sl_law
+               document_no, document_type, valid_from, ver, tags, preface, full_content from sl_law
     </sql>
 
     <select id="selectSlLawListForSearch" resultMap="SlLawResult">
@@ -129,6 +130,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="ver != null">ver,</if>
             <if test="tags != null">tags,</if>
             <if test="preface != null">preface,</if>
+            <if test="fullContent != null">full_content,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="createTime != null">#{createTime},</if>
@@ -152,6 +154,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="ver != null">#{ver},</if>
             <if test="tags != null">#{tags},</if>
             <if test="preface != null">#{preface},</if>
+            <if test="fullContent != null">#{fullContent}</if>
          </trim>
     </insert>
 
@@ -179,6 +182,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="ver != null">ver = #{ver},</if>
             <if test="tags != null">tags = #{tags},</if>
             <if test="preface != null">preface = #{preface},</if>
+            <if test="fullContent != null">full_content = #{fullContent},</if>
         </trim>
         where id = #{id}
     </update>

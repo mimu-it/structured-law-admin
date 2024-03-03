@@ -1,6 +1,5 @@
 package com.ruoyi.web.controller.elasticsearch.domain;
 
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -10,45 +9,25 @@ import java.util.List;
  */
 public interface EsFields {
 
-    String getEsDocId();
-
     Long getLawId();
-
-    Long getProvisionId();
 
     String getLawName();
 
-    String getSubtitle();
-
     String getLawLevel();
+
+    Integer[] getStatusArray();
+
+    String[] getAuthorityArray();
 
     List<String> getTags();
 
-    String getTag();
-
-    Date getPublish();
-
-    Date getValidFrom();
-
-    String getTitle();
-
     String getTermText();
-
-    String getAuthority();
-
-    Integer getStatus();
-
-    String getTitleNumber();
-
-    String getPreface();
 
     String getAuthorityProvince();
 
     String getAuthorityCity();
 
     String getAuthorityDistrict();
-
-    String getDocumentNo();
 
     String getContentText();
 
@@ -60,7 +39,7 @@ public interface EsFields {
 
     String[] getDocumentNoArray();
 
-    String getPublishRange();
+    String[] getPublishRange();
 
-    String getValidFromRange();
+    String[] getValidFromRange();
 }

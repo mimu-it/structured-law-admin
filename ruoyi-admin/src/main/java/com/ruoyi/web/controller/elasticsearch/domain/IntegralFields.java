@@ -9,7 +9,7 @@ import java.util.List;
  * @apiNote
  * 用于保存到 es 的宽表对象
  */
-public class IntegralFields extends SearchFields implements EsFields{
+public class IntegralFields{
 
     private String esDocId;
     private Long lawId;
@@ -33,13 +33,16 @@ public class IntegralFields extends SearchFields implements EsFields{
     private String statusLabel;
     private String documentNo;
     private String documentType;
+
+    private String titleOrigin;
     private String title;
+
     private String titleNumber;
     private String preface;
+    private String fullContent;
     private String termText;
     private String contentText;
 
-    @Override
     public String getEsDocId() {
         return esDocId;
     }
@@ -48,7 +51,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.esDocId = esDocId;
     }
 
-    @Override
     public Long getLawId() {
         return lawId;
     }
@@ -57,7 +59,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.lawId = lawId;
     }
 
-    @Override
     public Long getProvisionId() {
         return provisionId;
     }
@@ -66,7 +67,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.provisionId = provisionId;
     }
 
-    @Override
     public String getLawName() {
         return lawName;
     }
@@ -75,7 +75,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.lawName = lawName;
     }
 
-    @Override
     public String getSubtitle() {
         return subtitle;
     }
@@ -84,7 +83,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.subtitle = subtitle;
     }
 
-    @Override
     public String getLawLevel() {
         return lawLevel;
     }
@@ -93,7 +91,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.lawLevel = lawLevel;
     }
 
-    @Override
     public String getTag() {
         return tag;
     }
@@ -102,7 +99,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.tag = tag;
     }
 
-    @Override
     public List<String> getTags() {
         return tags;
     }
@@ -111,7 +107,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.tags = tags;
     }
 
-    @Override
     public Date getPublish() {
         return publish;
     }
@@ -120,7 +115,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.publish = publish;
     }
 
-    @Override
     public Date getValidFrom() {
         return validFrom;
     }
@@ -129,7 +123,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.validFrom = validFrom;
     }
 
-    @Override
     public String getTitle() {
         return title;
     }
@@ -138,7 +131,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.title = title;
     }
 
-    @Override
     public String getTermText() {
         return termText;
     }
@@ -147,7 +139,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.termText = termText;
     }
 
-    @Override
     public String getAuthority() {
         return authority;
     }
@@ -156,7 +147,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.authority = authority;
     }
 
-    @Override
     public Integer getStatus() {
         return status;
     }
@@ -165,7 +155,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.status = status;
     }
 
-    @Override
     public String getTitleNumber() {
         return titleNumber;
     }
@@ -174,7 +163,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.titleNumber = titleNumber;
     }
 
-    @Override
     public String getPreface() {
         return preface;
     }
@@ -183,7 +171,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.preface = preface;
     }
 
-    @Override
     public String getAuthorityProvince() {
         return authorityProvince;
     }
@@ -192,7 +179,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.authorityProvince = authorityProvince;
     }
 
-    @Override
     public String getAuthorityCity() {
         return authorityCity;
     }
@@ -201,7 +187,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.authorityCity = authorityCity;
     }
 
-    @Override
     public String getAuthorityDistrict() {
         return authorityDistrict;
     }
@@ -210,7 +195,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.authorityDistrict = authorityDistrict;
     }
 
-    @Override
     public String getDocumentNo() {
         return documentNo;
     }
@@ -219,7 +203,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.documentNo = documentNo;
     }
 
-    @Override
     public String getContentText() {
         return contentText;
     }
@@ -228,7 +211,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.contentText = contentText;
     }
 
-    @Override
     public Long getAssociatedFileId() {
         return associatedFileId;
     }
@@ -237,7 +219,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.associatedFileId = associatedFileId;
     }
 
-    @Override
     public String getDocumentType() {
         return documentType;
     }
@@ -246,7 +227,6 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.documentType = documentType;
     }
 
-    @Override
     public String getAssociatedFileName() {
         return associatedFileName;
     }
@@ -271,6 +251,22 @@ public class IntegralFields extends SearchFields implements EsFields{
         this.statusLabel = statusLabel;
     }
 
+    public String getFullContent() {
+        return fullContent;
+    }
+
+    public void setFullContent(String fullContent) {
+        this.fullContent = fullContent;
+    }
+
+    public String getTitleOrigin() {
+        return titleOrigin;
+    }
+
+    public void setTitleOrigin(String titleOrigin) {
+        this.titleOrigin = titleOrigin;
+    }
+
     public static final String LAW_ID = "law_id";
     public static final String PROVISION_ID = "provision_id";
     public static final String ASSOCIATED_FILE_ID = "associated_file_id";
@@ -292,6 +288,7 @@ public class IntegralFields extends SearchFields implements EsFields{
     public static final String TITLE_NUMBER = "title_number";
     public static final String TERM_TEXT = "term_text";
     public static final String PREFACE = "preface";
+    public static final String FULL_CONTENT = "full_content";
     public static final String CONTENT_TEXT = "content_text";
     public static final String ASSOCIATED_FILE_NAME = "associated_file_name";
     public static final String DOCUMENT_TYPE = "document_type";

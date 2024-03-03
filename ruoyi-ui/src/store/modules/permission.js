@@ -42,6 +42,9 @@ const permission = {
           rewriteRoutes.push({ path: '*', redirect: '/404', hidden: true })
           router.addRoutes(asyncRoutes);
           commit('SET_ROUTES', rewriteRoutes)
+
+          console.log(constantRoutes.concat(sidebarRoutes))
+
           commit('SET_SIDEBAR_ROUTERS', constantRoutes.concat(sidebarRoutes))
           commit('SET_DEFAULT_ROUTES', sidebarRoutes)
           commit('SET_TOPBAR_ROUTES', sidebarRoutes)

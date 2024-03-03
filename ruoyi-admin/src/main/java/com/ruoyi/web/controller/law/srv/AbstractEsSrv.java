@@ -105,9 +105,17 @@ public abstract class AbstractEsSrv {
     protected BoolQueryBuilder makeCommonBoolQueryBuilder(EsFields condition) {
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
 
-        String authority = condition.getAuthority();
-        if (StrUtil.isNotBlank(authority)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.AUTHORITY, authority));
+        /**
+         * 立法机关也是多选
+         */
+        String[] authorityArray = condition.getAuthorityArray();
+        if (ArrayUtil.isNotEmpty(authorityArray)) {
+            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
+            for(String authority : authorityArray) {
+                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY, authority));
+            }
+
+            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
         String authorityProvince = condition.getAuthorityProvince();
@@ -138,14 +146,24 @@ public abstract class AbstractEsSrv {
             boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.DOCUMENT_TYPE, documentType));
         }
 
-        Integer status = condition.getStatus();
-        if (status != null) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.STATUS, status));
+        /**
+         * status 多选
+         */
+        Integer[] statusArray = condition.getStatusArray();
+        if (ArrayUtil.isNotEmpty(statusArray)) {
+            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
+            for(Integer status : statusArray) {
+                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.STATUS, status));
+            }
+
+            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
-        String publishRangeStr = condition.getPublishRange();
-        if(StrUtil.isNotBlank(publishRangeStr)) {
-            String[] publishRange = JSONUtil.toList(publishRangeStr, String.class).toArray(new String[0]);
+        /**
+         * 发布日期时间范围
+         */
+        String[] publishRange = condition.getPublishRange();
+        if(ArrayUtil.isNotEmpty(publishRange)) {
             if (publishRange != null && publishRange.length == 2) {
                 RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery(IntegralFields.PUBLISH).timeZone("GMT+8");
                 makeRangeQueryBuilder(publishRange, rangeQueryBuilder);
@@ -153,9 +171,11 @@ public abstract class AbstractEsSrv {
             }
         }
 
-        String validFromRangeStr = condition.getValidFromRange();
-        if(StrUtil.isNotBlank(validFromRangeStr)) {
-            String[] validFromRange = JSONUtil.toList(validFromRangeStr, String.class).toArray(new String[0]);
+        /**
+         * 实施日期范围
+         */
+        String[] validFromRange = condition.getValidFromRange();
+        if(ArrayUtil.isNotEmpty(validFromRange)) {
             if (validFromRange != null && validFromRange.length == 2) {
                 RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery(IntegralFields.VALID_FROM).timeZone("GMT+8");
                 makeRangeQueryBuilder(validFromRange, rangeQueryBuilder);
@@ -163,11 +183,14 @@ public abstract class AbstractEsSrv {
             }
         }
 
+        /**
+         * 支持多个文号查询
+         */
         String[] documentNoArray = condition.getDocumentNoArray();
         if (ArrayUtil.isNotEmpty(documentNoArray)) {
             BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
             for(String documentNo : documentNoArray) {
-                boolQueryBuilderShould.must(QueryBuilders.wildcardQuery(IntegralFields.DOCUMENT_NO, "*" + documentNo + "*"));
+                boolQueryBuilderShould.should(QueryBuilders.wildcardQuery(IntegralFields.DOCUMENT_NO, "*" + documentNo + "*"));
             }
 
             boolQueryBuilder.must(boolQueryBuilderShould);

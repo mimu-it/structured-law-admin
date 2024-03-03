@@ -3,113 +3,113 @@
     "label": "全国人大及其常委会",
     "children": [{
       "label": "国务院",
-      "children": []
+      "children": null
     }, {
       "label": "国家监察委员会",
-      "children": []
+      "children": null
     }, {
       "label": "最高人民检察院",
-      "children": []
+      "children": null
     }, {
       "label": "最高人民法院",
-      "children": []
+      "children": null
     }]
   },
   {
     "label": "地方人大及其常委会",
     "children": [{
       "label": "北京市",
-      "children": []
+      "children": null
     }, {
       "label": "天津市",
-      "children": []
+      "children": null
     }, {
       "label": "河北省",
-      "children": []
+      "children": null
     }, {
       "label": "山西省",
-      "children": []
+      "children": null
     }, {
       "label": "内蒙古自治区",
-      "children": []
+      "children": null
     }, {
       "label": "辽宁省",
-      "children": []
+      "children": null
     }, {
       "label": "吉林省",
-      "children": []
+      "children": null
     }, {
       "label": "黑龙江省",
-      "children": []
+      "children": null
     }, {
       "label": "上海市",
-      "children": []
+      "children": null
     }, {
       "label": "江苏省",
-      "children": []
+      "children": null
     }, {
       "label": "浙江省",
-      "children": []
+      "children": null
     }, {
       "label": "安徽省",
-      "children": []
+      "children": null
     }, {
       "label": "福建省",
-      "children": []
+      "children": null
     }, {
       "label": "江西省",
-      "children": []
+      "children": null
     }, {
       "label": "山东省",
-      "children": []
+      "children": null
     }, {
       "label": "河南省",
-      "children": []
+      "children": null
     }, {
       "label": "湖北省",
-      "children": []
+      "children": null
     }, {
       "label": "湖南省",
-      "children": []
+      "children": null
     }, {
       "label": "广东省",
-      "children": []
+      "children": null
     }, {
       "label": "广西壮族自治区",
-      "children": []
+      "children": null
     }, {
       "label": "海南省",
-      "children": []
+      "children": null
     }, {
       "label": "重庆市",
-      "children": []
+      "children": null
     }, {
       "label": "四川省",
-      "children": []
+      "children": null
     }, {
       "label": "贵州省",
-      "children": []
+      "children": null
     }, {
       "label": "云南省",
-      "children": []
+      "children": null
     }, {
       "label": "西藏自治区",
-      "children": []
+      "children": null
     }, {
       "label": "陕西省",
-      "children": []
+      "children": null
     }, {
       "label": "甘肃省",
-      "children": []
+      "children": null
     }, {
       "label": "青海省",
-      "children": []
+      "children": null
     }, {
       "label": "宁夏回族自治区",
-      "children": []
+      "children": null
     }, {
       "label": "新疆维吾尔自治区",
-      "children": []
+      "children": null
     }]
   }
 ]

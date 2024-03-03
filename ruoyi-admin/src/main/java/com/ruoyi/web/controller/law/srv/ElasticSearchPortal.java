@@ -12,6 +12,7 @@ import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
 import com.ruoyi.web.controller.law.api.domain.inner.StatisticsRecord;
 import com.ruoyi.web.controller.law.api.domain.inner.TreeNode;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
@@ -386,15 +387,18 @@ public class ElasticSearchPortal {
         }
 
         int pageNum = 1;
-        int pageSize = isProd? 1000 : 50;
+        int pageSize = isProd? 500 : 50;
+        //int pageSize = 1000;
         int totalCount = esSrv.countData();
         int totalPage = (totalCount + (pageSize - 1)) / pageSize;
 
-        Page<IntegralFields> page = new Page<>();
+        Page<IntegralFields> page;
         /**
          * 分页往 elasticsearch 中插入数据
          */
         while (pageNum <= totalPage) {
+            /** 查询当前页的数据 */
+            page = esSrv.listDataByPage(pageNum, pageSize);
             if(!page.getResult().isEmpty()) {
                 /** 如果有数据，就批量插入 elasticsearch 中 */
                 try {
@@ -405,8 +409,6 @@ public class ElasticSearchPortal {
                 }
             }
 
-            /** 查询当前页的数据 */
-            page = esSrv.listDataByPage(pageNum, pageSize);
             pageNum++;
         }
 
@@ -509,8 +511,35 @@ public class ElasticSearchPortal {
 
         searchSourceBuilder.sort(IntegralFields.PUBLISH, SortOrder.DESC);
         return this.searchToList(size, fields,
-                new String[]{ IntegralFields.TERM_TEXT, IntegralFields.LAW_NAME },
+                new String[]{ IntegralFields.LAW_NAME },
                 searchRequest, searchSourceBuilder);
+    }
+
+
+    /**
+     *
+     * @param lawId
+     * @return
+     */
+    public String getLawFullContent(long lawId) {
+        SearchRequest searchRequest = new SearchRequest(INDEX__LAW);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId));
+        searchSourceBuilder.query(boolQueryBuilder);
+
+        searchSourceBuilder.sort(IntegralFields.PUBLISH, SortOrder.DESC);
+        List<IntegralFields> list = this.searchToList(1, new String[]{ IntegralFields.FULL_CONTENT },
+                new String[]{ IntegralFields.FULL_CONTENT },
+                searchRequest, searchSourceBuilder);
+        if(list == null || list.isEmpty()) {
+            return "";
+        }
+
+        IntegralFields fields = list.get(0);
+        return fields.getFullContent();
     }
 
 
@@ -527,9 +556,11 @@ public class ElasticSearchPortal {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-        boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_NAME, lawName));
+        /** 查历史，需精确匹配法律名，不然会导致无关法律也被查出来 */
+        boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_NAME + ".keyword", lawName));
         if(StrUtil.isNotBlank(title)) {
-            boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(IntegralFields.TITLE, title));
+            /** 查历史，条目标题如果能最大精确，那就应该选择最大精确匹配，至少也应该是短语匹配 */
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TITLE + ".keyword", title));
         }
 
         searchSourceBuilder.query(boolQueryBuilder);
@@ -721,6 +752,7 @@ public class ElasticSearchPortal {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
 
         String lawNameOrigin = (String) sourceAsMap.get(IntegralFields.LAW_NAME);
+        String titleOrigin = (String) sourceAsMap.get(IntegralFields.TITLE);
 
         if (highlightFields != null && high != null) {
             for (String highlightField : highlightFields) {
@@ -742,6 +774,7 @@ public class ElasticSearchPortal {
         String mapStr = JSONUtil.toJsonStr(sourceAsMap);
         IntegralFields integralFields = JSONUtil.toBean(mapStr, IntegralFields.class);
         integralFields.setLawNameOrigin(lawNameOrigin);
+        integralFields.setTitleOrigin(titleOrigin);
 
         if(integralFields.getStatus() != null) {
             integralFields.setStatusLabel(lawCache.getStatusOptionsMap().get(integralFields.getStatus()));
@@ -774,28 +807,26 @@ public class ElasticSearchPortal {
     /**
      * 对每个状态进行分开统计总匹配数
      * @param indexName
-     * @param integralFields
+     * @param integralParams
      * @return
      */
-    public List<StatisticsRecord> countGroupByStatus(String indexName, IntegralFields integralFields) {
-        integralFields.setStatus(null);
-
+    public List<StatisticsRecord> countGroupByStatus(String indexName, IntegralParams integralParams) {
         List<StatisticsRecord> resultList = new ArrayList<>();
         Map<Integer, String> statusTypesMap = lawCache.getStatusOptionsMap();
         statusTypesMap.forEach((k, v) -> {
-            integralFields.setStatus(k);
-            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralFields);
+            integralParams.setStatusArray(new Integer[]{ k });
+            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
 
             //long totalCount = this.countInEs(indexName, searchSourceBuilder);
             long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
 
             StatisticsRecord statisticsRecord = new StatisticsRecord();
-            statisticsRecord.setName(String.valueOf(k));
+            statisticsRecord.setName(lawCache.getStatusOptionsMap().get(k));
             statisticsRecord.setTotal(totalCount);
             resultList.add(statisticsRecord);
         });
 
-        integralFields.setStatus(null);
+        integralParams.setStatusArray(null);
         return resultList;
     }
 
@@ -842,17 +873,17 @@ public class ElasticSearchPortal {
     /**
      * 对每个效力级别进行分开统计总匹配数
      * @param indexName
-     * @param integralFields
+     * @param integralParams
      * @return
      */
-    public List<StatisticsRecord> countGroupByLawLevel(String indexName, IntegralFields integralFields) {
-        integralFields.setLawLevel(null);
+    public List<StatisticsRecord> countGroupByLawLevel(String indexName, IntegralParams integralParams) {
+        integralParams.setLawLevel(null);
 
         List<StatisticsRecord> resultList = new ArrayList<>();
         List<String> lawLevelOptions = lawCache.getLawLevelOptions();
         lawLevelOptions.forEach((item) -> {
-            integralFields.setLawLevel(item);
-            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralFields);
+            integralParams.setLawLevel(item);
+            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
 
             //long totalCount = this.countInEs(indexName, searchSourceBuilder);
             long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
@@ -863,7 +894,7 @@ public class ElasticSearchPortal {
             resultList.add(statisticsRecord);
         });
 
-        integralFields.setLawLevel(null);
+        integralParams.setLawLevel(null);
         return resultList;
     }
 
@@ -871,14 +902,14 @@ public class ElasticSearchPortal {
     /**
      * 对每个效力级别进行分开统计总匹配数
      * @param indexName
-     * @param integralFields
+     * @param integralParams
      * @return
      */
-    public List<StatisticsRecord> countGroupByAuthorityProvince(String indexName, IntegralFields integralFields) {
-        integralFields.setAuthority(null);
-        integralFields.setAuthorityProvince(null);
-        integralFields.setAuthorityCity(null);
-        integralFields.setAuthorityDistrict(null);
+    public List<StatisticsRecord> countGroupByAuthorityProvince(String indexName, IntegralParams integralParams) {
+        integralParams.setAuthorityArray(null);
+        integralParams.setAuthorityProvince(null);
+        integralParams.setAuthorityCity(null);
+        integralParams.setAuthorityDistrict(null);
 
         List<StatisticsRecord> resultList = new ArrayList<>();
         List<TreeNode> authorityTree = lawCache.getAuthorityTree();
@@ -909,7 +940,7 @@ public class ElasticSearchPortal {
 
         treeFlat.forEach((labelName) -> {
             String[] provinceArray = provinceValueMap.get(labelName);
-            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralFields);
+            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
             BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) searchSourceBuilder.query();
 
             if(provinceArray != null) {
@@ -930,10 +961,10 @@ public class ElasticSearchPortal {
             resultList.add(statisticsRecord);
         });
 
-        integralFields.setAuthority(null);
-        integralFields.setAuthorityProvince(null);
-        integralFields.setAuthorityCity(null);
-        integralFields.setAuthorityDistrict(null);
+        integralParams.setAuthorityArray(null);
+        integralParams.setAuthorityProvince(null);
+        integralParams.setAuthorityCity(null);
+        integralParams.setAuthorityDistrict(null);
         return resultList;
     }
 

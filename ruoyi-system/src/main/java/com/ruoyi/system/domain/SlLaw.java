@@ -88,6 +88,9 @@ public class SlLaw extends BaseEntity
     @Excel(name = "前言")
     private String preface;
 
+    @Excel(name = "全文")
+    private String fullContent;
+
     public void setId(Long id)
     {
         this.id = id;
@@ -245,6 +248,14 @@ public class SlLaw extends BaseEntity
         this.documentType = documentType;
     }
 
+    public String getFullContent() {
+        return fullContent;
+    }
+
+    public void setFullContent(String fullContent) {
+        this.fullContent = fullContent;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -266,6 +277,7 @@ public class SlLaw extends BaseEntity
             .append("ver", getVer())
             .append("tags", getTags())
                 .append("preface", getPreface())
+                .append("fullContent", getFullContent())
             .toString();
     }
 
@@ -287,6 +299,7 @@ public class SlLaw extends BaseEntity
     public static final String VER = "ver";
     public static final String TAGS = "tags";
     public static final String PREFACE = "preface";
+    public static final String FULL_CONTENT = "full_content";
 
 
     public static final String C__ID = "id";
@@ -307,6 +320,7 @@ public class SlLaw extends BaseEntity
     public static final String C__VER = "ver";
     public static final String C__TAGS = "tags";
     public static final String C__PREFACE = "preface";
+    public static final String C__FULL_CONTENT = "fullContent";
 
 
     /*public static void main(String[] args) {

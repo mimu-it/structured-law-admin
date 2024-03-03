@@ -8,7 +8,7 @@ spring:
       # 主库数据源
       master:
         # 将serverTimezone设置为GMT%2B8，(GMT为格林尼治标准时间，即本初子午线的时间，GMT%2B8表示GMT加上8小时 就是北京时间)
-        url: jdbc:mysql://localhost:3310/structured_law?&useLegacyDatetimeCode=false&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8
+        url: jdbc:mysql://localhost:3310/structured_law?&useLegacyDatetimeCode=false&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
         username: root
         password: 123456
       # 从库数据源

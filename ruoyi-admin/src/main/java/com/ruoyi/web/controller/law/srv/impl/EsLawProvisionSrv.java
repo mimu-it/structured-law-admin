@@ -1,10 +1,12 @@
 package com.ruoyi.web.controller.law.srv.impl;
 
+import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.Page;
 import com.ruoyi.system.service.ISlLawProvisionService;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
 import com.ruoyi.web.controller.law.srv.AbstractEsSrv;
 import com.ruoyi.web.controller.law.srv.PortalSrv;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -71,31 +73,37 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
      */
     @Override
     public SearchSourceBuilder mustConditions(EsFields esFields) {
-        IntegralFields integralFields = (IntegralFields) esFields;
+        IntegralParams integralParams = (IntegralParams) esFields;
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        BoolQueryBuilder boolQueryBuilder = super.makeCommonBoolQueryBuilder(integralFields);
+        BoolQueryBuilder boolQueryBuilder = super.makeCommonBoolQueryBuilder(integralParams);
 
-        String title = integralFields.getTitle();
-        if (StrUtil.isNotBlank(title)) {
-            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TITLE + ".keyword", title));
+        String[] termTitleArray = integralParams.getTermTitleArray();
+        if (ArrayUtil.isNotEmpty(termTitleArray)) {
+            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
+            for(String termTitle : termTitleArray) {
+                boolQueryBuilderShould.should(QueryBuilders.matchPhraseQuery(IntegralFields.TITLE, termTitle));
+            }
+
+            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
-        List<String> tags = integralFields.getTags();
+        List<String> tags = integralParams.getTags();
         if (tags != null) {
-            boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.TAGS, tags));
+            boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.TAGS + ".keyword", tags));
         }
 
         BoolQueryBuilder shouldQuery = QueryBuilders.boolQuery();
         /** 因为在 EsLawProvisionSrv 中， 法律名和条款搜索是或者关系，所以lawName单独从 makeCommonBoolQueryBuilder 中拿出来*/
-        String lawName = integralFields.getLawName();
+        String lawName = integralParams.getLawName();
         if (StrUtil.isNotBlank(lawName)) {
             shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
         }
 
-        String termText = integralFields.getTermText();
+        /** 分词查询 termText */
+        String termText = integralParams.getTermText();
         if (StrUtil.isNotBlank(termText)) {
-            shouldQuery.should(QueryBuilders.termQuery(IntegralFields.TERM_TEXT, termText));
+            shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.TERM_TEXT, termText));
         }
 
         boolQueryBuilder.must(shouldQuery);

@@ -17,6 +17,8 @@ import com.ruoyi.system.service.ISlLawProvisionService;
 import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.law.api.domain.inner.ProvisionTreeNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +33,7 @@ import java.util.List;
  */
 @Service
 public class PortalSrv {
-
+    protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Autowired
     private ISlLawProvisionService slLawProvisionService;
@@ -131,6 +133,7 @@ public class PortalSrv {
         integralFields.setStatus(law.getStatus());
         integralFields.setValidFrom(law.getValidFrom());
         integralFields.setDocumentNo(law.getDocumentNo());
+        integralFields.setFullContent(law.getFullContent());
     }
 
     /**
@@ -162,6 +165,7 @@ public class PortalSrv {
                     JSONArray jsonArray = JSONUtil.parseArray(tagsJsonStr);
                     for (Object obj : jsonArray) {
                         if (obj instanceof String) {
+                            logger.info("获取罪名：" + obj);
                             IntegralFields integralFields = new IntegralFields();
                             integralFields.setProvisionId(row.getId());
                             integralFields.setLawId(row.getLawId());
@@ -247,7 +251,7 @@ public class PortalSrv {
                 }
 
                 this.copyToIntegralFields(law, integralFields);
-                integralFields.setPreface(law.getPreface());
+                //integralFields.setPreface(law.getPreface());
             }
 
             integralFieldsList.add(integralFields);
