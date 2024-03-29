@@ -159,17 +159,27 @@ public class ParamProcessor {
         }
     }
 
+    public static final void handleAuthorityCity(IntegralParams integralParams, String authorityCityStr) {
+        if (StrUtil.isNotBlank(authorityCityStr)) {
+            String[] authorityCityStrArray = JSONUtil.toList(authorityCityStr, String.class).toArray(new String[0]);
+            integralParams.setAuthorityCityArray(authorityCityStrArray);
+        }
+    }
+
+    public static final void handleAuthorityProvince(IntegralParams integralParams, String authorityProvinceStr) {
+        if (StrUtil.isNotBlank(authorityProvinceStr)) {
+            String[] authorityProvinceStrStrArray = JSONUtil.toList(authorityProvinceStr, String.class).toArray(new String[0]);
+            integralParams.setAuthorityProvinceArray(authorityProvinceStrStrArray);
+        }
+    }
+
     /**
      * 公共属性的组装
-     * @param authorityProvince
-     * @param authorityCity
      * @param authorityDistrict
      * @param integralParams
      */
     public static final void handleGeneric(String lawName,
                                            String termText,
-                                           String authorityProvince,
-                                           String authorityCity,
                                            String authorityDistrict,
                                            IntegralParams integralParams) {
         /**
@@ -184,14 +194,6 @@ public class ParamProcessor {
          */
         if (StrUtil.isNotBlank(termText)) {
             integralParams.setTermText(termText);
-        }
-
-        if (StrUtil.isNotBlank(authorityProvince)) {
-            integralParams.setAuthorityProvince(authorityProvince);
-        }
-
-        if (StrUtil.isNotBlank(authorityCity)) {
-            integralParams.setAuthorityCity(authorityCity);
         }
 
         if (StrUtil.isNotBlank(authorityDistrict)) {

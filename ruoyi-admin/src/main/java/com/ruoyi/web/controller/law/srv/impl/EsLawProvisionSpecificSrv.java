@@ -20,16 +20,14 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * @author xiao.hu
- * @date 2024-01-05
+ * @date 2024-03-20
  * @apiNote
  */
 @Service
-public class EsLawProvisionSrv extends AbstractEsSrv {
+public class EsLawProvisionSpecificSrv extends AbstractEsSrv {
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Resource
@@ -38,14 +36,6 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
     @Autowired
     private ISlLawProvisionService slLawProvisionService;
 
-    private String urlRegex = "[\u4e00-\u9fa5]+法";
-    private Pattern pattern = Pattern.compile(urlRegex);
-
-
-    /**
-     *
-     * @return
-     */
     @Override
     public String getMappingConfig() {
         try {
@@ -72,11 +62,6 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
         return portalSrv.listProvisionByPage(pageNum, pageSize);
     }
 
-    /**
-     * 构造查询条件
-     * @param esFields
-     * @return
-     */
     @Override
     public SearchSourceBuilder mustConditions(EsFields esFields) {
         IntegralParams integralParams = (IntegralParams) esFields;
@@ -84,22 +69,12 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         BoolQueryBuilder boolQueryBuilder = super.makeCommonBoolQueryBuilder(integralParams);
 
-        String[] termTitleArray = integralParams.getTermTitleArray();
-        if (ArrayUtil.isNotEmpty(termTitleArray)) {
-            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
-            for(String termTitle : termTitleArray) {
-                boolQueryBuilderShould.should(QueryBuilders.matchPhraseQuery(IntegralFields.TITLE, termTitle));
-            }
-
-            boolQueryBuilder.must(boolQueryBuilderShould);
-        }
-
         List<String> tags = integralParams.getTags();
         if (tags != null) {
             boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.TAGS + ".keyword", tags));
         }
 
-        boolQueryBuilder.must(makeLawNameOrTermTextCondition(integralParams));
+        boolQueryBuilder.must(makeLawNameAndTermTitleCondition(integralParams));
 
         searchSourceBuilder.query(boolQueryBuilder);
         return searchSourceBuilder;
@@ -110,30 +85,25 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
      * @param integralParams
      * @return
      */
-    private BoolQueryBuilder makeLawNameOrTermTextCondition(IntegralParams integralParams) {
-        BoolQueryBuilder shouldQuery = QueryBuilders.boolQuery();
+    private BoolQueryBuilder makeLawNameAndTermTitleCondition(IntegralParams integralParams) {
+        BoolQueryBuilder orQuery = QueryBuilders.boolQuery();
         /** 因为在 EsLawProvisionSrv 中， 法律名和条款搜索是或者关系，所以lawName单独从 makeCommonBoolQueryBuilder 中拿出来*/
         String lawName = integralParams.getLawName();
         if (StrUtil.isNotBlank(lawName)) {
             /** 对于输入"婚姻 罪"，这样的词语应该进行分词，不适用于 matchPhraseQuery*/
-            shouldQuery.should(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawName));
+            orQuery.should(QueryBuilders.termQuery(IntegralFields.LAW_NAME, lawName));
         }
 
-        /** 分词查询 termText */
-        String termText = integralParams.getTermText();
-        if (StrUtil.isNotBlank(termText)) {
-            Matcher matcher = pattern.matcher(termText);
-            if(matcher.find()) {
-                String lawNameText = matcher.group(0);
-                String termTextPured = termText.replace(lawNameText, "");
-                BoolQueryBuilder mustQuery = QueryBuilders.boolQuery().must(QueryBuilders.matchQuery(IntegralFields.TERM_TEXT, termTextPured))
-                        .must(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawNameText));
-                shouldQuery.should(mustQuery);
+        /** 分词查询 termTitle */
+        String[] termTitles = integralParams.getTermTitleArray();
+        if (termTitles != null && termTitles.length > 0) {
+            BoolQueryBuilder shouldQuery = QueryBuilders.boolQuery();
+            for(String termTitle : termTitles) {
+                shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.TERM_TEXT, lawName + " " + termTitle));
             }
-            else {
-                shouldQuery.should(QueryBuilders.matchQuery(IntegralFields.TERM_TEXT, termText));
-            }
+
+            orQuery.should(shouldQuery);
         }
-        return shouldQuery;
+        return orQuery;
     }
 }

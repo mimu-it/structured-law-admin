@@ -118,29 +118,58 @@ public abstract class AbstractEsSrv {
             boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
-        String authorityProvince = condition.getAuthorityProvince();
-        if (StrUtil.isNotBlank(authorityProvince)) {
-            List<String> provinces = JSONUtil.toList(authorityProvince, String.class);
-            boolQueryBuilder.should(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_PROVINCE, provinces));
+        /**
+         * 立法机关省份
+         */
+        String[] authorityProvinceArray = condition.getAuthorityProvinceArray();
+        if (ArrayUtil.isNotEmpty(authorityProvinceArray)) {
+            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
+            for(String province : authorityProvinceArray) {
+                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_PROVINCE, province));
+            }
+
+            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
-        String authorityCity = condition.getAuthorityCity();
-        if (StrUtil.isNotBlank(authorityCity)) {
-            List<String> cities = JSONUtil.toList(authorityCity, String.class);
-            boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_CITY, cities));
+        /**
+         * 立法机关城市
+         */
+        String[] authorityCityArray = condition.getAuthorityCityArray();
+        if (ArrayUtil.isNotEmpty(authorityCityArray)) {
+            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
+            for(String city : authorityCityArray) {
+                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_CITY, city));
+            }
+
+            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
+        /**
+         * 立法机关区域
+         */
         String authorityDistrict = condition.getAuthorityDistrict();
         if (StrUtil.isNotBlank(authorityDistrict)) {
+            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
+
             List<String> districts = JSONUtil.toList(authorityDistrict, String.class);
-            boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_DISTRICT, districts));
+            for(String district : districts) {
+                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_DISTRICT, district));
+            }
+
+            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
+        /**
+         * 效力级别
+         */
         String lawLevel = condition.getLawLevel();
         if (StrUtil.isNotBlank(lawLevel)) {
             boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_LEVEL, lawLevel));
         }
 
+        /**
+         * 关联文件类型
+         */
         String documentType = condition.getDocumentType();
         if (StrUtil.isNotBlank(documentType)) {
             boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.DOCUMENT_TYPE, documentType));
@@ -195,6 +224,7 @@ public abstract class AbstractEsSrv {
 
             boolQueryBuilder.must(boolQueryBuilderShould);
         }
+
         return boolQueryBuilder;
     }
 }

@@ -35,8 +35,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="listAuthority" resultMap="SlLawResult">
-        select distinct authority, authority_province, authority_city, authority_district from sl_law order by authority_province
+        select distinct authority, authority_province, authority_city, authority_district from sl_law
+        <where>
+            <if test="authorityProvince != null  and authorityProvince != ''"> and authority_province = #{authorityProvince}</if>
+            <if test="authorityCity != null  and authorityCity != ''"> and authority_city = #{authorityCity}</if>
+        </where>
+        order by authority_province
     </select>
+
+
+    <select id="listCity" resultMap="SlLawResult">
+        select distinct authority_city from sl_law
+        <where>
+            <if test="authorityProvince != null  and authorityProvince != ''"> and authority_province = #{authorityProvince}</if>
+        </where>
+        order by authority_city
+    </select>
+
 
     <select id="listStatus" resultType="integer">
         select distinct status from sl_law

@@ -12,13 +12,13 @@ import java.util.Map;
  */
 public class Statistics {
 
-    private Map<String, List<StatisticsRecord>> statisticsMap = new HashMap<>();
+    private Map<String, List<?>> statisticsMap = new HashMap<>();
 
-    public Map<String, List<StatisticsRecord>> getStatisticsMap() {
+    public Map<String, List<?>> getStatisticsMap() {
         return statisticsMap;
     }
 
-    public void put(String statType, List<StatisticsRecord> list) {
+    public void put(String statType, List<?> list) {
         this.statisticsMap.put(statType, list);
     }
 }

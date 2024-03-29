@@ -80,19 +80,10 @@ public class LawFields implements EsFields{
         this.authority = authority;
     }
 
-    @Override
-    public String getAuthorityProvince() {
-        return authorityProvince;
-    }
-
     public void setAuthorityProvince(String authorityProvince) {
         this.authorityProvince = authorityProvince;
     }
 
-    @Override
-    public String getAuthorityCity() {
-        return authorityCity;
-    }
 
     public void setAuthorityCity(String authorityCity) {
         this.authorityCity = authorityCity;
@@ -118,6 +109,16 @@ public class LawFields implements EsFields{
     @Override
     public String getTermText() {
         return null;
+    }
+
+    @Override
+    public String[] getAuthorityProvinceArray() {
+        return new String[0];
+    }
+
+    @Override
+    public String[] getAuthorityCityArray() {
+        return new String[0];
     }
 
     public void setValidFrom(Date validFrom) {
@@ -171,9 +172,40 @@ public class LawFields implements EsFields{
         return new String[0];
     }
 
+    @Override
+    public Integer getStatus() {
+        return status;
+    }
+
     public void setDocumentNoArray(String[] documentNoArray) {
         this.documentNoArray = documentNoArray;
     }
 
+    public String getSubtitle() {
+        return subtitle;
+    }
 
+    public String getAuthority() {
+        return authority;
+    }
+
+    public String getAuthorityProvince() {
+        return authorityProvince;
+    }
+
+    public String getAuthorityCity() {
+        return authorityCity;
+    }
+
+    public Date getPublish() {
+        return publish;
+    }
+
+    public Date getValidFrom() {
+        return validFrom;
+    }
+
+    public String getDocumentNo() {
+        return documentNo;
+    }
 }

@@ -23,9 +23,9 @@ public interface EsFields {
 
     String getTermText();
 
-    String getAuthorityProvince();
+    String[] getAuthorityProvinceArray();
 
-    String getAuthorityCity();
+    String[] getAuthorityCityArray();
 
     String getAuthorityDistrict();
 
@@ -42,4 +42,6 @@ public interface EsFields {
     String[] getPublishRange();
 
     String[] getValidFromRange();
+
+    Integer getStatus();
 }

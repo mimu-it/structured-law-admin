@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.law.srv;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -13,11 +14,13 @@ import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.web.controller.elasticsearch.domain.EsFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
-import com.ruoyi.web.controller.law.api.domain.inner.StatisticsRecord;
-import com.ruoyi.web.controller.law.api.domain.inner.TreeNode;
+import com.ruoyi.web.controller.law.api.domain.inner.*;
 import com.ruoyi.web.controller.law.api.domain.resp.LawSearchHits;
+import com.ruoyi.web.controller.law.api.domain.resp.LawWithProvisionsMatchedPage;
+import com.ruoyi.web.controller.law.api.domain.resp.LawWithProvisionsSearchHits;
 import com.ruoyi.web.controller.law.api.domain.resp.SuggestHits;
 import com.ruoyi.web.controller.law.cache.LawCache;
+import com.ruoyi.web.controller.law.values.LawStatus;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -38,18 +41,27 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.text.Text;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchModule;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.BucketOrder;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.CardinalityAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.ParsedCardinality;
+import org.elasticsearch.search.aggregations.pipeline.BucketSortPipelineAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
+import org.elasticsearch.search.searchafter.SearchAfterBuilder;
+import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
@@ -64,6 +76,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author xiao.hu
@@ -76,6 +89,7 @@ public class ElasticSearchPortal {
 
     public static final String INDEX__LAW = "law";
     public static final String INDEX__LAW_PROVISION = "law_provision";
+    public static final String INDEX__LAW_PROVISION_SPECIFIC = "law_provision_specific";
     public static final String INDEX__LAW_PROVISION_TAGS = "law_provision_tags";
     public static final String INDEX__LAW_ASSOCIATED_FILE = "law_associated_file";
 
@@ -95,6 +109,9 @@ public class ElasticSearchPortal {
     AbstractEsSrv esLawProvisionSrv;
 
     @Resource
+    AbstractEsSrv esLawProvisionSpecificSrv;
+
+    @Resource
     AbstractEsSrv esLawProvisionTagsSrv;
 
     @Resource
@@ -109,6 +126,7 @@ public class ElasticSearchPortal {
     public void initSrvMapping() {
         srvMap.put(INDEX__LAW, esLawSrv);
         srvMap.put(INDEX__LAW_PROVISION, esLawProvisionSrv);
+        srvMap.put(INDEX__LAW_PROVISION_SPECIFIC, esLawProvisionSpecificSrv);
         srvMap.put(INDEX__LAW_PROVISION_TAGS, esLawProvisionTagsSrv);
         srvMap.put(INDEX__LAW_ASSOCIATED_FILE, esLawAssociatedFileSrv);
     }
@@ -239,16 +257,14 @@ public class ElasticSearchPortal {
         searchSourceBuilder.fetchSource(includeFields, excludeFields);
 
         SuggestionBuilder<?> suggestionBuilder;
-        if(!isPhraseSuggest) {
-            // 构建completionSuggestionBuilder传入查询的参数
-            /** Completion Suggester：它主要针对的应用场景就是"Auto Completion"，FST数据结构，类似Trie树，不用打开倒排，快速返回，前缀匹配 */
-            suggestionBuilder = SuggestBuilders.completionSuggestion(suggestFieldDotSuggest)
-                    .skipDuplicates(true).prefix(suggestValue).size(10);
-        }
-        else {
+        if(isPhraseSuggest) {
             return this.phraseSuggest(indexName, suggestField, suggestValue, includeFields);
         }
 
+        // 构建completionSuggestionBuilder传入查询的参数
+        /** Completion Suggester：它主要针对的应用场景就是"Auto Completion"，FST数据结构，类似Trie树，不用打开倒排，快速返回，前缀匹配 */
+        suggestionBuilder = SuggestBuilders.completionSuggestion(suggestFieldDotSuggest)
+                .skipDuplicates(true).prefix(suggestValue).size(10);
 
         SuggestBuilder suggestBuilder = new SuggestBuilder();
         // 定义查询的suggest名称
@@ -309,11 +325,16 @@ public class ElasticSearchPortal {
      * @return
      */
     private List<SuggestHits> phraseSuggest(String indexName, String suggestField, String text, String[] includeFields) {
+        /** 去哪里查索引 */
         SearchRequest searchRequest = new SearchRequest(indexName);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        if(indexName.equals(ElasticSearchPortal.INDEX__LAW_PROVISION)) {
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.STATUS, LawStatus.effective.getKey()));
+        }
+
         boolQueryBuilder.must(QueryBuilders.matchPhraseQuery(suggestField, text));
 
         searchSourceBuilder.query(boolQueryBuilder);
@@ -333,6 +354,22 @@ public class ElasticSearchPortal {
             for(String key : includeFields) {
                 extraData.put(key, objectMap.get(key));
             }
+
+            /** 为了只筛选出有效的值 */
+            Long provisionId = (Long) extraData.get(IntegralFields.PROVISION_ID);
+            if(provisionId == null) {
+                throw new IllegalArgumentException("we should do search include provision id");
+            }
+
+            IntegralFields matchOne = this.getByProvisionId(provisionId, new String[]{
+                    IntegralFields.STATUS
+            });
+
+            if(matchOne.getStatus().intValue() != LawStatus.effective.getKey().intValue()) {
+                /** 非有效值就忽略 */
+                continue;
+            }
+
             suggestHits.setExtraData(extraData);
 
             suggestSet.add(suggestHits);
@@ -517,7 +554,7 @@ public class ElasticSearchPortal {
 
 
     /**
-     *
+     * 获取索引中的原始全文，未进行结构化拆分条款的全文
      * @param lawId
      * @return
      */
@@ -570,6 +607,41 @@ public class ElasticSearchPortal {
                 new String[]{ IntegralFields.TERM_TEXT, IntegralFields.LAW_NAME },
                 searchRequest, searchSourceBuilder);
     }
+
+    /**
+     * 一次批量查询对应的历史
+     * @param lawProvisionList
+     * @param size
+     * @param fields
+     * @return
+     */
+    public List<IntegralFields> listLawProvisionsHistoryByBat(Set<LawProvision> lawProvisionList, Integer size, String[] fields, BoolQueryBuilder existingQueryForHistory) {
+        SearchRequest searchRequest = new SearchRequest(INDEX__LAW_PROVISION);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder batBoolQueryBuilder = QueryBuilders.boolQuery();
+        lawProvisionList.forEach((item) -> {
+            BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+            /** 查历史，需精确匹配法律名，不然会导致无关法律也被查出来 */
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_NAME + ".keyword", item.getLawName()));
+            if(StrUtil.isNotBlank(item.getTermTitle())) {
+                /** 查历史，条目标题如果能最大精确，那就应该选择最大精确匹配，至少也应该是短语匹配 */
+                boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.TITLE + ".keyword", item.getTermTitle()));
+            }
+            boolQueryBuilder.must(existingQueryForHistory);
+
+            batBoolQueryBuilder.should(boolQueryBuilder);
+        });
+
+        searchSourceBuilder.query(batBoolQueryBuilder);
+
+        searchSourceBuilder.sort(IntegralFields.PUBLISH, SortOrder.DESC);
+        return this.searchToList(size, fields,
+                new String[]{ IntegralFields.TERM_TEXT, IntegralFields.LAW_NAME },
+                searchRequest, searchSourceBuilder);
+    }
+
 
 
     /**
@@ -637,12 +709,12 @@ public class ElasticSearchPortal {
      * @return
      * @throws IOException
      */
-    public LawSearchHits searchByPage(String indexName, int pageNum, int pageSize, String[] fields, String[] highlightFields,
+    public LawSearchHits searchByPage(String indexName, int pageNum, int pageSize, String[] specificFields, String[] highlightFields,
                                       String sortField, Boolean sortType, SearchSourceBuilder searchSourceBuilder) {
         SearchRequest request = new SearchRequest(indexName);
-        if (ArrayUtil.isNotEmpty(fields)) {
+        if (ArrayUtil.isNotEmpty(specificFields)) {
             //只查询特定字段。如果需要查询所有字段则不设置该项。
-            searchSourceBuilder.fetchSource(new FetchSourceContext(true, fields, Strings.EMPTY_ARRAY));
+            searchSourceBuilder.fetchSource(new FetchSourceContext(true, specificFields, Strings.EMPTY_ARRAY));
         }
 
         /** from 是从 0 开始的， 设置确定结果要从哪个索引开始搜索的from选项，默认为0 */
@@ -651,6 +723,9 @@ public class ElasticSearchPortal {
         searchSourceBuilder.from(from);
         searchSourceBuilder.size(pageSize);
 
+        /**
+         * 设置排序
+         */
         if (StrUtil.isNotBlank(sortField)) {
             if(sortType == null) {
                 sortType = true;
@@ -665,16 +740,310 @@ public class ElasticSearchPortal {
         }
 
         SearchResponse response = this.doEsSearch(highlightFields, searchSourceBuilder, request);
-
-        //logger.info("==" + response.getHits().getTotalHits());
         if (response.status().getStatus() == 200) {
             // 解析对象
-            LawSearchHits highlightSearchHits = remakeSearchResponse(response, highlightFields);
-            highlightSearchHits.setPageNum(pageNum);
-            highlightSearchHits.setPageSize(pageSize);
-            return highlightSearchHits;
+            LawSearchHits lawSearchHits = remakeSearchResponse(response, highlightFields);
+            lawSearchHits.setPageNum(pageNum);
+            lawSearchHits.setPageSize(pageSize);
+            return lawSearchHits;
         }
         return null;
+    }
+
+
+    /**
+     * 不同的页码，得到不同的命中数据
+     *
+     * elasticSearch7.7 不支持聚合查询分页
+     *
+     * @param pageNum
+     * @return
+     * @throws IOException
+     */
+    public List<LawWithProvisionsSearchHits> searchProvisionAggregationsDistinctByLawId(int pageNum, int pageSize, String[] fields, String[] highlightFields,
+                                                                                        String sortField, Boolean sortType, IntegralParams integralParams) {
+        /** 构造es查询条件 */
+        SearchSourceBuilder searchSourceBuilder = this.mustConditions(ElasticSearchPortal.INDEX__LAW_PROVISION, integralParams);
+        /** 至少保证3部法律 */
+        //定义avg聚合，指定字段为法律ID
+        String aggregationTermsName = "distinct_law";
+        String aggregationOfCountMatch = "count_match";
+        TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(aggregationTermsName).field(IntegralFields.LAW_ID)
+                .order(BucketOrder.aggregation(aggregationOfCountMatch, false))
+                .subAggregation(
+                        AggregationBuilders.count(aggregationOfCountMatch).field(IntegralFields.LAW_NAME + ".keyword")
+                ).size(3);
+
+        //声明BucketPath，用于后面的bucket筛选
+        /*Map<String, String> bucketsPathsMap = new HashMap<>(2);
+        bucketsPathsMap.put("orderCount", "_count");
+        bucketsPathsMap.put("avgAmount", "avgAmount");
+        //设置脚本
+        Script script = new Script("params.avgAmount >= 100 && params.orderCount >=2");
+
+        //构建bucket选择器
+        BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("having", bucketsPathsMap, script);*/
+
+
+        /*TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms("distinct_law").field(IntegralFields.LAW_ID)
+                .order(BucketOrder.aggregation("uid_filter", true))
+                .subAggregation(
+                        AggregationBuilders.filter("uid_filter", QueryBuilders.queryStringQuery("刑法"))
+                ).size(3);*/
+
+        /*TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms("distinct_law").field(IntegralFields.LAW_ID)
+                .order(BucketOrder.count(true))
+                .size(3);*/
+
+        //添加聚合
+        searchSourceBuilder.aggregation(aggregationBuilder);
+
+        SearchRequest request = new SearchRequest(ElasticSearchPortal.INDEX__LAW_PROVISION);
+        if (ArrayUtil.isNotEmpty(fields)) {
+            //只查询特定字段。如果需要查询所有字段则不设置该项。
+            searchSourceBuilder.fetchSource(new FetchSourceContext(true, fields, Strings.EMPTY_ARRAY));
+        }
+
+        /**
+         * 聚合不需要设置分页，所以直接设成0
+         */
+        searchSourceBuilder.from(0);
+        searchSourceBuilder.size(0);
+
+        if (StrUtil.isNotBlank(sortField)) {
+            /**
+             * 如果存在排序字段
+             */
+            if(sortType == null) {
+                sortType = true;
+            }
+
+            if(!IntegralFields.PUBLISH.equals(sortField) && !IntegralFields.VALID_FROM.equals(sortField)) {
+                /** 排序字段跟时间无关的情况下，需要使用 .keyword */
+                sortField = sortField + ".keyword";
+            }
+
+            //排序字段，注意如果proposal_no是text类型会默认带有keyword性质，需要拼接.keyword
+            searchSourceBuilder.sort(sortField, sortType ? SortOrder.ASC : SortOrder.DESC);
+        }
+
+        /**
+         * 把组合的聚合查询条件传入es进行查询
+         */
+        SearchResponse response = this.doEsSearch(highlightFields, searchSourceBuilder, request);
+
+        List<LawWithProvisionsSearchHits> lawWithProvisionsSearchHitsList = new ArrayList<>();
+        if (response.status().getStatus() == 200) {
+            /** 获取聚合结果 */
+            Aggregations aggregations = response.getAggregations();
+            Terms groupAggregation = aggregations.get(aggregationTermsName);
+
+            /**
+             * 从分组中再分别查询对应法律的条目内容
+             */
+            for (Terms.Bucket bucket : groupAggregation.getBuckets()) {
+                // 分组的键
+                String lawIdStr = bucket.getKeyAsString();
+                // 分组中的文档数量
+                long docCount = bucket.getDocCount();
+                // 处理分组结果
+                //logger.debug("{}, {}", key, docCount);
+
+                /** from 是从 0 开始的， 设置确定结果要从哪个索引开始搜索的from选项，默认为0 */
+                int from = pageNum - 1;
+                from = from <= 0 ? 0 : from * pageSize;
+                searchSourceBuilder.from(from);
+                searchSourceBuilder.size(pageSize);
+
+                /** 复制一个 searchSourceBuilder， 并获取它的查询条件 */
+                SearchSourceBuilder clonedBuilder = cloneSearchSourceBuilder(searchSourceBuilder);
+                BoolQueryBuilder existingQuery = (BoolQueryBuilder) clonedBuilder.query();
+
+                /** 用同样的条件增加法律id的查询条件再进行查询 */
+                existingQuery.must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawIdStr));
+                /** 第4个参数：null 就会查询所有值， 第5个参数：高亮这些值*/
+                LawSearchHits lawSearchHits = this.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION, pageNum, pageSize, null,
+                        new String[]{ IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT, IntegralFields.TITLE }, IntegralFields.TITLE_NUMBER, true, clonedBuilder);
+
+                /** 从查询结果中获取法律名称，并继续从es中获取历史 */
+                SearchSourceBuilder clonedBuilderForHistory = cloneSearchSourceBuilder(searchSourceBuilder);
+                BoolQueryBuilder existingQueryForHistory = (BoolQueryBuilder) clonedBuilderForHistory.query();
+                List<LawWithProvisionsMatched> lawWithProvisionsMatched = this.makeLawWithProvisionsMatchedByBat(lawSearchHits.getSearchHits(), existingQueryForHistory);
+
+                /** 从查询结果中获取法律名称，并继续从es中获取关联文件 */
+                Map<Long, List<IntegralFields>> associatedFileMap = this.makeAssociatedFiles(lawSearchHits);
+
+                LawWithProvisionsSearchHits lawWithProvisionsSearchHits = new LawWithProvisionsSearchHits();
+                //lawWithProvisionsSearchHits.setLawSearchHits(lawSearchHits);
+                lawWithProvisionsSearchHits.setLawWithProvisionsMatched(lawWithProvisionsMatched);
+                lawWithProvisionsSearchHits.setAssociatedFileMap(associatedFileMap);
+
+                lawWithProvisionsSearchHitsList.add(lawWithProvisionsSearchHits);
+            }
+
+
+            return lawWithProvisionsSearchHitsList;
+        }
+        return null;
+    }
+
+    /**
+     * 分页加载，但没有总页数
+     *
+     * http://localhost:8080/structured-law/portal/category/search-law?page_num=1&content_text=婚姻&law_level=地方性法规
+     *
+     * @param pageNum
+     * @param pageSize
+     * @param fields
+     * @param highlightFields
+     * @param sortField
+     * @param sortType
+     * @param integralParams
+     * @return
+     */
+    public LawWithProvisionsMatchedPage searchProvisionDistinctByLawIdInPage(int pageNum, int pageSize, IntegralParams integralParams) {
+        /** 构造es查询条件,  这个条件会被多次复制 */
+        SearchSourceBuilder searchSourceBuilder = this.mustConditions(ElasticSearchPortal.INDEX__LAW_PROVISION, integralParams);
+        /** 复制原始条件 */
+        SearchSourceBuilder clonedBuilder = cloneSearchSourceBuilder(searchSourceBuilder);
+
+        /** 桶分页 */
+        int from = (pageNum - 1) * pageSize;
+        /** 因为我们只关注桶内容，所以这里全部设为0 */
+        clonedBuilder.from(0);
+        clonedBuilder.size(0);
+
+        /** 设置聚合 */
+        final String aggregationName = "my_aggregation";
+        TermsAggregationBuilder aggregation = AggregationBuilders.terms(aggregationName)
+                .field(IntegralFields.LAW_ID)
+                /**
+                 * 如果我只查询第一页，那么只需要10条， 如果我要查询第二页，那么需要20条，并在桶中跳过前10条
+                 * 越到后面页，性能应该越差
+                 */
+                .size(pageNum * pageSize)
+                /**
+                 * 如果id是数值类型，并且你想要根据id的大小进行排序，你可以使用BucketOrder.key(boolean)，
+                 * 其中boolean参数表示排序是升序（true）还是降序（false）。
+                 */
+                .order(BucketOrder.key(true)).subAggregation(
+                        new BucketSortPipelineAggregationBuilder("sorted_categories", new ArrayList<>()).from(from).size(pageSize));
+        clonedBuilder.aggregation(aggregation);
+
+        /** 开始查询 */
+        SearchRequest searchRequest = new SearchRequest(ElasticSearchPortal.INDEX__LAW_PROVISION);
+        searchRequest.source(clonedBuilder);
+        SearchResponse searchResponse = null;
+        try {
+            searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            logger.error("", e);
+            throw new IllegalStateException(e);
+        }
+
+        /** 处理聚合结果 */
+        List<LawWithProvisionsMatched> lawWithProvisionsMatchedList = new ArrayList<>();
+        Terms terms = searchResponse.getAggregations().get(aggregationName);
+        for (Terms.Bucket entry : terms.getBuckets()) {
+            Long lawId = (Long) entry.getKey();
+            long docCount = entry.getDocCount();
+            // 处理每个聚合桶的数据...
+            logger.debug("lawId: {}, docCount: {}", lawId, docCount);
+
+            SearchSourceBuilder clonedBuilderForSpecificLawId = cloneSearchSourceBuilder(searchSourceBuilder);
+            BoolQueryBuilder existingQuery = (BoolQueryBuilder) clonedBuilderForSpecificLawId.query();
+
+            /** 用同样的条件增加法律id的查询条件再进行查询 */
+            existingQuery.must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId));
+            /** 第4个参数：null 就会查询所有值， 第5个参数：高亮这些值*/
+            LawSearchHits lawSearchHits = this.searchByPage(ElasticSearchPortal.INDEX__LAW_PROVISION, 1, 10000, null,
+                    new String[]{ IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT, IntegralFields.TITLE }, IntegralFields.TITLE_NUMBER, true, clonedBuilderForSpecificLawId);
+
+            /**
+             * 构建返回对象
+             */
+            LawWithProvisionsMatched lawWithProvisionsMatched = new LawWithProvisionsMatched();
+
+            List<IntegralFields> matchedList = lawSearchHits.getSearchHits();
+            lawWithProvisionsMatched.setProvisionList(matchedList);
+            if(!matchedList.isEmpty()) {
+                IntegralFields row = matchedList.get(0);
+                lawWithProvisionsMatched.setLawName(row.getLawName());
+                lawWithProvisionsMatched.setLawNameOrigin(row.getLawNameOrigin());
+                lawWithProvisionsMatched.setAuthority(row.getAuthority());
+                lawWithProvisionsMatched.setAuthorityProvince(row.getAuthorityProvince());
+                lawWithProvisionsMatched.setAuthorityCity(row.getAuthorityCity());
+                lawWithProvisionsMatched.setAuthorityDistrict(row.getAuthorityDistrict());
+                lawWithProvisionsMatched.setDocumentNo(row.getDocumentNo());
+                lawWithProvisionsMatched.setLevel(row.getLawLevel());
+                lawWithProvisionsMatched.setPublish(row.getPublish());
+                lawWithProvisionsMatched.setStatus(row.getStatus());
+                lawWithProvisionsMatched.setStatusLabel(row.getStatusLabel());
+                lawWithProvisionsMatched.setValidFrom(row.getValidFrom());
+            }
+
+            logger.debug("matchedList: {}", matchedList);
+            lawWithProvisionsMatchedList.add(lawWithProvisionsMatched);
+        }
+
+
+        /** 统计去重 , 用于计算某个字段的唯一值数量，也就是去重后的总数 */
+        /** 复制原始条件 */
+        SearchSourceBuilder clonedBuilderForCardinality = cloneSearchSourceBuilder(searchSourceBuilder);
+        final String distinctAggregationName = "distinct_law_id";
+        CardinalityAggregationBuilder cardinalityAggregationBuilder = AggregationBuilders.cardinality(distinctAggregationName).field(IntegralFields.LAW_ID);
+        clonedBuilderForCardinality.aggregation(cardinalityAggregationBuilder);
+        clonedBuilderForCardinality.size(0);
+        searchRequest.source(clonedBuilderForCardinality);
+
+        long size;
+        try {
+            searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            if (null == searchResponse) {
+                size = 0;
+            }
+            // 这个field就是上面起的别名
+            ParsedCardinality parsedCardinality = searchResponse.getAggregations().get(distinctAggregationName);
+            size = parsedCardinality.getValue();
+        } catch (IOException e) {
+            logger.error("", e);
+            throw new IllegalStateException(e);
+        }
+
+        LawWithProvisionsMatchedPage page = new LawWithProvisionsMatchedPage();
+        page.setList(lawWithProvisionsMatchedList);
+        page.setPageNum(pageNum);
+        page.setPageSize(pageSize);
+        page.setTotal(size);
+        page.setTotalPage((int) ((size - 1) / pageSize + 1));
+        logger.debug("size: {}", size);
+
+        return page;
+    }
+
+
+
+    /**
+     * clone SearchSourceBuilder
+     * @param old
+     * @return
+     */
+    private SearchSourceBuilder cloneSearchSourceBuilder(SearchSourceBuilder old) {
+        // 将 SearchSourceBuilder 转换为 JSON 字符串
+        String json = old.toString();
+
+        SearchSourceBuilder clonedBuilder = new SearchSourceBuilder();
+        final SearchModule searchModule = new SearchModule(Settings.EMPTY, false, Collections.emptyList());
+        final XContentParser fullQueryJsonParser;
+        try {
+            fullQueryJsonParser = XContentFactory.xContent(XContentType.JSON)
+                    .createParser(new NamedXContentRegistry(searchModule.getNamedXContents()), LoggingDeprecationHandler.INSTANCE, json);
+            clonedBuilder.parseXContent(fullQueryJsonParser);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+
+        return clonedBuilder;
     }
 
     /**
@@ -697,6 +1066,13 @@ public class ElasticSearchPortal {
         //highlight.requireFieldMatch(false);
         highlight.preTags("<span style='color:red'>");
         highlight.postTags("</span>");
+
+        /**
+         * 确保所有字段都匹配
+         * 如果要多个字段高亮,这项要为false
+         */
+        highlight.requireFieldMatch(false);
+
         searchSourceBuilder.highlighter(highlight);
         //不返回源数据。只有条数之类的数据。
         //builder.fetchSource(false);
@@ -723,7 +1099,7 @@ public class ElasticSearchPortal {
      * @param highlightFields
      */
     private LawSearchHits remakeSearchResponse(SearchResponse searchResponse, String[] highlightFields) {
-        LawSearchHits highlightSearchHits = new LawSearchHits();
+        LawSearchHits lawSearchHits = new LawSearchHits();
 
         long totalHitsCount = searchResponse.getHits().getTotalHits().value;
 
@@ -734,9 +1110,9 @@ public class ElasticSearchPortal {
             mixHighlight(highlightFields, list, hit);
         }
 
-        highlightSearchHits.setTotal(totalHitsCount);
-        highlightSearchHits.setSearchHits(list);
-        return highlightSearchHits;
+        lawSearchHits.setTotal(totalHitsCount);
+        lawSearchHits.setSearchHits(list);
+        return lawSearchHits;
     }
 
     /**
@@ -812,19 +1188,27 @@ public class ElasticSearchPortal {
      */
     public List<StatisticsRecord> countGroupByStatus(String indexName, IntegralParams integralParams) {
         List<StatisticsRecord> resultList = new ArrayList<>();
-        Map<Integer, String> statusTypesMap = lawCache.getStatusOptionsMap();
-        statusTypesMap.forEach((k, v) -> {
-            integralParams.setStatusArray(new Integer[]{ k });
+
+        Integer[] statusArray = integralParams.getStatusArray();
+        if(statusArray == null || statusArray.length == 0) {
+            List<Integer> status = new ArrayList<>();
+            Map<Integer, String> statusTypesMap = lawCache.getStatusOptionsMap();
+            statusTypesMap.forEach((k, v) -> status.add(k));
+            statusArray = status.toArray(new Integer[0]);
+        }
+
+        for(Integer status : statusArray) {
+            integralParams.setStatusArray(new Integer[]{ status });
             SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
 
             //long totalCount = this.countInEs(indexName, searchSourceBuilder);
             long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
 
             StatisticsRecord statisticsRecord = new StatisticsRecord();
-            statisticsRecord.setName(lawCache.getStatusOptionsMap().get(k));
+            statisticsRecord.setName(lawCache.getStatusOptionsMap().get(status));
             statisticsRecord.setTotal(totalCount);
             resultList.add(statisticsRecord);
-        });
+        }
 
         integralParams.setStatusArray(null);
         return resultList;
@@ -834,11 +1218,30 @@ public class ElasticSearchPortal {
     /**
      * 查询的数据可用 distinct 去重
      * @param indexName
-     * @param searchSourceBuilder
      * @param field
+     * @param paramsArray
+     * @param distinctField
+     * @param integralParams
      * @return
      */
-    private Integer countGroupDistinct(String indexName, SearchSourceBuilder searchSourceBuilder, String field) {
+    private Integer countGroupDistinct(String indexName, String field, String[] paramsArray, String distinctField, IntegralParams integralParams) {
+        SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
+
+        BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) searchSourceBuilder.query();
+        boolQueryBuilder.must(QueryBuilders.termsQuery(field, paramsArray));
+        searchSourceBuilder.query(boolQueryBuilder);
+
+        return this.countGroupDistinct(indexName, searchSourceBuilder, distinctField);
+    }
+
+    /**
+     * 查询的数据可用 distinct 去重
+     * @param indexName
+     * @param searchSourceBuilder
+     * @param distinctField
+     * @return
+     */
+    private Integer countGroupDistinct(String indexName, SearchSourceBuilder searchSourceBuilder, String distinctField) {
         // 创建查询请求对象
         SearchRequest searchRequest = new SearchRequest(indexName);
         // 创建查询资源对象
@@ -846,27 +1249,91 @@ public class ElasticSearchPortal {
         BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) searchSourceBuilder.query();
         sourceBuilder.query(boolQueryBuilder);
 
-        // 查询条件-分组
-        CardinalityAggregationBuilder cardinalityAggregationBuilder = AggregationBuilders.cardinality(field).field(field);
+        /** 统计去重 , 用于计算某个字段的唯一值数量，也就是去重后的总数 */
+        CardinalityAggregationBuilder cardinalityAggregationBuilder = AggregationBuilders.cardinality(distinctField).field(distinctField);
         sourceBuilder.aggregation(cardinalityAggregationBuilder);
         sourceBuilder.size(0);
         searchRequest.source(sourceBuilder);
 
         SearchResponse searchResponse;
-        int size = 0;
+        int size;
         try {
             searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
             if (null == searchResponse) {
                 return 0;
             }
             // 这个field就是上面起的别名
-            ParsedCardinality parsedCardinality = searchResponse.getAggregations().get(field);
+            ParsedCardinality parsedCardinality = searchResponse.getAggregations().get(distinctField);
             size = (int) parsedCardinality.getValue();
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
         }
         return size;
+    }
+
+    /**
+     * 分组统计匹配的数量（子聚合已去重）
+     * @param indexName
+     * @param field
+     * @param paramsArray
+     * @param distinctField
+     * @param integralParams
+     * @return
+     */
+    private Map<String, Long> countDistinctGroupBy(String indexName, String field, String[] paramsArray, String distinctField, IntegralParams integralParams) {
+        SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
+
+        BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) searchSourceBuilder.query();
+        boolQueryBuilder.must(QueryBuilders.termsQuery(field, paramsArray));
+
+        // 创建查询请求对象
+        SearchRequest searchRequest = new SearchRequest(indexName);
+
+        // 创建查询资源对象
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        sourceBuilder.query(boolQueryBuilder);
+        // 添加聚合分组条件，以字段 "your_field" 为例
+        String aggregationTermsName = "group_by_authority";
+        TermsAggregationBuilder aggregation = AggregationBuilders.terms(aggregationTermsName).field(IntegralFields.AUTHORITY);
+
+        // 统计去重
+        CardinalityAggregationBuilder cardinalityAggregationBuilder = AggregationBuilders.cardinality(distinctField).field(distinctField);
+        aggregation.subAggregation(cardinalityAggregationBuilder);
+
+        sourceBuilder.aggregation(aggregation);
+        sourceBuilder.size(0);
+        searchRequest.source(sourceBuilder);
+
+        SearchResponse searchResponse;
+        Map<String, Long> resultMap = new HashMap<>();
+        try {
+            searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            if (null == searchResponse) {
+                return null;
+            }
+
+            //获取聚合结果
+            Aggregations aggregations = searchResponse.getAggregations();
+            Terms groupAggregation = aggregations.get(aggregationTermsName);
+
+            /**
+             * 从分组中再分别查询对应法律的条目内容
+             */
+            for (Terms.Bucket bucket : groupAggregation.getBuckets()) {
+                // 分组的键
+                String key = bucket.getKeyAsString();
+                // 分组中的文档数量
+                long docCount = bucket.getDocCount();
+                // 处理分组结果
+                logger.debug("{}, {}", key, docCount);
+                resultMap.put(key, docCount);
+            }
+        } catch (IOException e) {
+            logger.error("", e);
+            throw new IllegalStateException(e);
+        }
+        return resultMap;
     }
 
 
@@ -877,95 +1344,244 @@ public class ElasticSearchPortal {
      * @return
      */
     public List<StatisticsRecord> countGroupByLawLevel(String indexName, IntegralParams integralParams) {
-        integralParams.setLawLevel(null);
+        IntegralParams copy = BeanUtil.toBean(integralParams, IntegralParams.class);
+
+        String[] lawLevelArray = copy.getLawLevelArray();
+        if(lawLevelArray == null || lawLevelArray.length == 0) {
+            List<String> lawLevelOptions = lawCache.getLawLevelOptions();
+            lawLevelArray = lawLevelOptions.toArray(new String[0]);
+        }
 
         List<StatisticsRecord> resultList = new ArrayList<>();
-        List<String> lawLevelOptions = lawCache.getLawLevelOptions();
-        lawLevelOptions.forEach((item) -> {
-            integralParams.setLawLevel(item);
-            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
+        for(String lawLevel : lawLevelArray) {
+            copy.setLawLevel(lawLevel);
+            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, copy);
 
             //long totalCount = this.countInEs(indexName, searchSourceBuilder);
             long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
 
             StatisticsRecord statisticsRecord = new StatisticsRecord();
-            statisticsRecord.setName(item);
+            statisticsRecord.setName(lawLevel);
             statisticsRecord.setTotal(totalCount);
             resultList.add(statisticsRecord);
-        });
-
-        integralParams.setLawLevel(null);
+        }
         return resultList;
     }
 
 
     /**
      * 对每个效力级别进行分开统计总匹配数
+     *
+     * 20240327 查看小包公，当查询"北京"和"北京市人大(含常委会)"时，右侧统计树，会显示两个北京，其中一个北京节点下有"北京市人大(含常委会)"
      * @param indexName
      * @param integralParams
      * @return
      */
-    public List<StatisticsRecord> countGroupByAuthorityProvince(String indexName, IntegralParams integralParams) {
-        integralParams.setAuthorityArray(null);
-        integralParams.setAuthorityProvince(null);
-        integralParams.setAuthorityCity(null);
-        integralParams.setAuthorityDistrict(null);
+    public List<TreeNode> countGroupByAuthority(String indexName, IntegralParams integralParams) {
+        IntegralParams copy = BeanUtil.toBean(integralParams, IntegralParams.class);
+        integralParams.getAuthorityArray();
 
-        List<StatisticsRecord> resultList = new ArrayList<>();
         List<TreeNode> authorityTree = lawCache.getAuthorityTree();
 
-        Map<String, String[]> provinceValueMap = new HashMap<>();
-        List<String> treeFlat = new ArrayList<>();
-        authorityTree.forEach((item) -> {
-            String labelName = item.getLabel();
-            if("全国人大及其常委会".equals(labelName)) {
-                List<String> authorityProvinceList = new ArrayList<>();
-                for(TreeNode province : item.getChildren()) {
-                    authorityProvinceList.add(province.getLabel());
+        List<TreeNode> filterAuthorityTree = new ArrayList<>();
+        if(ArrayUtil.isNotEmpty(copy.getAuthorityArray())) {
+            for(String label : copy.getAuthorityArray()) {
+                for(TreeNode node : authorityTree) {
+                    TreeNode targetNode = this.findNode(node, label);
+                    if(targetNode != null) {
+                        TreeNode parentNode = targetNode.getParent();
+
+                        /** 当目标是"北京市人大(含常委会)"时，不是直接返回"北京市人大(含常委会)"这个节点，
+                         *  而是要把其父节点"北京"， 也返回
+                         */
+                        TreeNode copyParentNode = new TreeNode();
+                        copyParentNode.setNodeType(parentNode.getNodeType());
+                        copyParentNode.setLabel(parentNode.getLabel());
+
+                        List<TreeNode> children = new ArrayList<>();
+                        children.add(targetNode);
+                        copyParentNode.setChildren(children);
+
+                        filterAuthorityTree.add(copyParentNode);
+                    }
+                }
+            }
+        }
+
+        if(ArrayUtil.isNotEmpty(copy.getAuthorityCityArray())) {
+            for(String label : copy.getAuthorityCityArray()) {
+                for(TreeNode node : authorityTree) {
+                    TreeNode targetNode = this.findNode(node, label);
+                    if(targetNode != null) {
+                        filterAuthorityTree.add(targetNode);
+                    }
+                }
+            }
+        }
+
+        if(ArrayUtil.isNotEmpty(copy.getAuthorityProvinceArray())) {
+            for(String label : copy.getAuthorityProvinceArray()) {
+                for(TreeNode node : authorityTree) {
+                    TreeNode targetNode = this.findNode(node, label);
+                    if(targetNode != null) {
+                        filterAuthorityTree.add(targetNode);
+                    }
+                }
+            }
+        }
+
+        if(filterAuthorityTree == null) {
+            filterAuthorityTree = authorityTree;
+        }
+
+        filterAuthorityTree.forEach((item) -> this.dfsIterativeToStat(item, indexName, integralParams));
+
+        return filterAuthorityTree;
+    }
+
+    /**
+     * 查找节点
+     * @param root
+     * @param label
+     * @return
+     */
+    private TreeNode findNode(TreeNode root, String label) {
+        if (root == null || StrUtil.isBlank(label)) {
+            return null;
+        }
+
+        Stack<TreeNode> stack = new Stack<>();
+        stack.push(root);
+
+        /** 记录统计结果，避免重复查询 */
+        while (!stack.isEmpty()) {
+            TreeNode current = stack.pop();
+
+            if(label.equals(current.getLabel())) {
+                return current;
+            }
+
+            if(current.getChildren() != null) {
+                // 将子节点压入栈中，以便后续遍历
+                for (int i = current.getChildren().size() - 1; i >= 0; i--) {
+                    stack.push(current.getChildren().get(i));
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     *
+     * @param root
+     * @param indexName
+     * @param integralParams
+     */
+    private void dfsIterativeToStat(TreeNode root, String indexName, IntegralParams integralParams) {
+        if (root == null) {
+            return;
+        }
+
+        Stack<TreeNode> stack = new Stack<>();
+        stack.push(root);
+
+        /** 记录统计结果，避免重复查询 */
+        Map<String, Long> authorityCountMap = new HashMap<>();
+        while (!stack.isEmpty()) {
+            TreeNode current = stack.pop();
+
+            /**
+             * authority/tree.json 已经构建了 org 与 province 的关系，所以不用关心 province 这块的数据
+             */
+            if("org".equals(current.getNodeType())) {
+                /** org下可能是province，也可能是authority */
+                List<TreeNode> nodeChildren = current.getChildren();
+                if(nodeChildren == null) {
+                    continue;
                 }
 
-                String[] provinceArray = authorityProvinceList.toArray(new String[0]);
-                String provinceForShow = "全国性机关";
-                treeFlat.add(provinceForShow);
-                provinceValueMap.put(provinceForShow, provinceArray);
+                List<String> paramsList = new ArrayList<>();
+                String childNodeType = null;
+                for(TreeNode node : nodeChildren) {
+                    if(childNodeType == null) {
+                        childNodeType = node.getNodeType();
+                    }
+                    else {
+                        if(!childNodeType.equals(node.getNodeType())) {
+                            throw new IllegalStateException("Org TreeNode's children contains different node type");
+                        }
+                    }
+
+                    paramsList.add(node.getLabel());
+                }
+
+                String field = null;
+                String[] paramsArray = paramsList.toArray(new String[0]);
+                if("province".equals(childNodeType)) {
+                    /** 先获取之前的参数，然后再把省市信息的查询条件并入 */
+                    field = IntegralFields.AUTHORITY_PROVINCE;
+                }
+                else if("authority".equals(childNodeType)) {
+                    field = IntegralFields.AUTHORITY;
+                }
+                else {
+                    throw new IllegalStateException("Org TreeNode's node type is illegal");
+                }
+
+                /** 先获取之前的参数，然后再把省市信息的查询条件并入 */
+                long totalCount = this.countGroupDistinct(indexName, field, paramsArray, IntegralFields.LAW_ID, integralParams);
+                current.setExtra(totalCount);
             }
-            else {
-                List<TreeNode> provinceList = item.getChildren();
-                provinceList.forEach((ch) -> {
-                    String provinceName = ch.getLabel();
-                    treeFlat.add(provinceName);
-                });
+            else if("province".equals(current.getNodeType())) {
+                /** 当前树节点是省级，就查市级 */
+                List<TreeNode> cityChildren = current.getChildren();
+                if(cityChildren == null) {
+                    continue;
+                }
+                String[] cityArray = cityChildren.stream().map(TreeNode::getLabel).toArray(String[]::new);
+
+                /** 先获取之前的参数，然后再把省市信息的查询条件并入 */
+                long totalCount = this.countGroupDistinct(indexName, IntegralFields.AUTHORITY_CITY, cityArray, IntegralFields.LAW_ID, integralParams);
+                current.setExtra(totalCount);
             }
-        });
+            else if("city".equals(current.getNodeType())) {
+                /** 当前树节点是市级，就查发布机关级 */
+                List<TreeNode> authorityChildren = current.getChildren();
+                if(authorityChildren == null) {
+                    continue;
+                }
 
-        treeFlat.forEach((labelName) -> {
-            String[] provinceArray = provinceValueMap.get(labelName);
-            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
-            BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) searchSourceBuilder.query();
+                String[] authorityArray = authorityChildren.stream().map(TreeNode::getLabel).toArray(String[]::new);
 
-            if(provinceArray != null) {
-                boolQueryBuilder.must(QueryBuilders.termsQuery(IntegralFields.AUTHORITY_PROVINCE, provinceArray));
+                /** 先获取之前的参数，然后再把省市信息的查询条件并入 */
+                Map<String, Long> map = this.countDistinctGroupBy(indexName, IntegralFields.AUTHORITY, authorityArray, IntegralFields.LAW_ID, integralParams);
+                if(map != null) {
+                    authorityCountMap.putAll(map);
+                }
+
+                AtomicLong total = new AtomicLong();
+                map.forEach((k, v) -> total.addAndGet(v));
+                current.setExtra(total.longValue());
             }
-            else {
-                boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.AUTHORITY_PROVINCE, labelName));
+            else if("authority".equals(current.getNodeType())) {
+                /** 当前树节点是机关级，就查之前市级分组查到的结果缓存中的值 */
+                long total = authorityCountMap.getOrDefault(current.getLabel(), 0L);
+                if(total == 0) {
+                    /** 为0 的话就去真实查询一下 */
+                    total = this.countGroupDistinct(indexName, IntegralFields.AUTHORITY,
+                            new String[]{current.getLabel()}, IntegralFields.LAW_ID, integralParams);
+                }
+                current.setExtra(total);
             }
 
-            searchSourceBuilder.query(boolQueryBuilder);
-
-            //long totalCount = this.countInEs(indexName, searchSourceBuilder);
-            long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
-
-            StatisticsRecord statisticsRecord = new StatisticsRecord();
-            statisticsRecord.setName(labelName);
-            statisticsRecord.setTotal(totalCount);
-            resultList.add(statisticsRecord);
-        });
-
-        integralParams.setAuthorityArray(null);
-        integralParams.setAuthorityProvince(null);
-        integralParams.setAuthorityCity(null);
-        integralParams.setAuthorityDistrict(null);
-        return resultList;
+            if(current.getChildren() != null) {
+                // 将子节点压入栈中，以便后续遍历
+                for (int i = current.getChildren().size() - 1; i >= 0; i--) {
+                    stack.push(current.getChildren().get(i));
+                }
+            }
+        }
     }
 
 
@@ -984,4 +1600,203 @@ public class ElasticSearchPortal {
         return esSrv.mustConditions(condition);
     }
 
+
+    /**
+     * 从查询出来的法律中每个条目对应的历史
+     * @param hitsList
+     * @return
+     */
+    public Map<String, ProvisionHistory> makeLawProvisionHistory(List<IntegralFields> hitsList) {
+        /** 使用set的原因是可能同一个法律可能命中多次，不能使用同样参数反复查询 */
+        Set<LawProvision> lawProvisionList = new HashSet<>();
+        for(IntegralFields fields : hitsList) {
+            LawProvision lawProvision = new LawProvision();
+            lawProvision.setLawName(fields.getLawNameOrigin());
+            lawProvision.setTermTitle(fields.getTitleOrigin());
+            lawProvisionList.add(lawProvision);
+        }
+
+        Map<String, ProvisionHistory> map = new HashMap<>();
+        for(LawProvision lawProvision : lawProvisionList) {
+            List<IntegralFields> matchHistoryList = this.listLawProvisionsHistory(lawProvision.getLawName(),
+                    lawProvision.getTermTitle(),1000, new String[]{
+                            IntegralFields.LAW_NAME,
+                            IntegralFields.PUBLISH,
+                            IntegralFields.VALID_FROM,
+                            IntegralFields.STATUS,
+                            IntegralFields.TITLE,
+                            IntegralFields.TERM_TEXT
+                    });
+
+            if(!matchHistoryList.isEmpty()) {
+                ProvisionHistory provisionHistory = map.get(lawProvision.getLawName());
+                if(provisionHistory == null) {
+                    provisionHistory = new ProvisionHistory();
+                }
+                provisionHistory.addTermTitleHistory(lawProvision.getTermTitle(), matchHistoryList);
+                map.put(lawProvision.getLawName(), provisionHistory);
+            }
+        }
+
+        return map;
+    }
+
+
+    /**
+     * 从查询出来的法律中每个条目对应的历史, 批量操作
+     * @param hitsList
+     * @return
+     */
+    public List<LawWithProvisionsMatched> makeLawWithProvisionsMatchedByBat(List<IntegralFields> hitsList, BoolQueryBuilder existingQueryForHistory) {
+        /** 使用set的原因是可能同一个法律可能命中多次，不能使用同样参数反复查询 */
+        Set<LawProvision> lawProvisionList = new HashSet<>();
+        for(IntegralFields fields : hitsList) {
+            LawProvision lawProvision = new LawProvision();
+            lawProvision.setLawName(fields.getLawNameOrigin());
+            lawProvision.setTermTitle(fields.getTitleOrigin());
+            lawProvisionList.add(lawProvision);
+        }
+
+        Map<String, LawWithProvisionsMatched> map = new HashMap<>();
+
+        /**
+         * 这些匹配值需要根据 lawProvision.getLawName() 进行分类
+         */
+        List<IntegralFields> matchHistoryList = this.listLawProvisionsHistoryByBat(lawProvisionList ,1000, null, existingQueryForHistory);
+
+        if(!matchHistoryList.isEmpty()) {
+            for(IntegralFields lawProvision : matchHistoryList) {
+                /** 开始分类 */
+                LawWithProvisionsMatched lawWithProvisionsMatched = map.get(lawProvision.getLawName());
+                if(lawWithProvisionsMatched == null) {
+                    /** 如果map中没有对应值，就初始化一个 */
+                    lawWithProvisionsMatched = new LawWithProvisionsMatched();
+                    map.put(lawProvision.getLawName(), lawWithProvisionsMatched);
+                }
+
+                if(lawWithProvisionsMatched.getId() != null) {
+                    lawWithProvisionsMatched.setId(lawProvision.getLawId());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getLevel())) {
+                    lawWithProvisionsMatched.setLevel(lawProvision.getLawLevel());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getDocumentNo())) {
+                    lawWithProvisionsMatched.setDocumentNo(lawProvision.getDocumentNo());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getLawName())) {
+                    lawWithProvisionsMatched.setLawName(lawProvision.getLawName());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getLawNameOrigin())) {
+                    lawWithProvisionsMatched.setLawNameOrigin(lawProvision.getLawNameOrigin());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getAuthority())) {
+                    lawWithProvisionsMatched.setAuthority(lawProvision.getAuthority());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getAuthorityCity())) {
+                    lawWithProvisionsMatched.setAuthorityCity(lawProvision.getAuthorityCity());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getAuthorityProvince())) {
+                    lawWithProvisionsMatched.setAuthorityProvince(lawProvision.getAuthorityProvince());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getAuthorityDistrict())) {
+                    lawWithProvisionsMatched.setAuthorityDistrict(lawProvision.getAuthorityDistrict());
+                }
+
+                if(StrUtil.isBlank(lawWithProvisionsMatched.getStatusLabel())) {
+                    lawWithProvisionsMatched.setStatusLabel(lawProvision.getStatusLabel());
+                }
+
+                if(lawWithProvisionsMatched.getStatus() != null) {
+                    lawWithProvisionsMatched.setStatus(lawProvision.getStatus());
+                }
+
+                if(lawWithProvisionsMatched.getPublish() != null) {
+                    lawWithProvisionsMatched.setPublish(lawProvision.getPublish());
+                }
+
+                if(lawWithProvisionsMatched.getValidFrom() != null) {
+                    lawWithProvisionsMatched.setValidFrom(lawProvision.getValidFrom());
+                }
+
+                lawProvision.setLawId(null);
+                lawProvision.setLawLevel(null);
+                lawProvision.setDocumentNo(null);
+                lawProvision.setLawNameOrigin(null);
+                lawProvision.setLawName(null);
+                lawProvision.setAuthority(null);
+                lawProvision.setAuthorityCity(null);
+                lawProvision.setAuthorityProvince(null);
+                lawProvision.setAuthorityDistrict(null);
+                lawProvision.setStatusLabel(null);
+                lawProvision.setStatus(null);
+                lawProvision.setPublish(null);
+                lawProvision.setValidFrom(null);
+                lawWithProvisionsMatched.addProvision(lawProvision);
+            }
+        }
+
+        List<LawWithProvisionsMatched> listSorted = new ArrayList<>();
+        map.forEach((k, lawWithProvisionsMatched) -> {
+            lawWithProvisionsMatched.getProvisionList().sort(Comparator.comparing(IntegralFields::getTitleNumber));
+            listSorted.add(lawWithProvisionsMatched);
+        });
+        //listSorted.sort(Comparator.comparing(LawWithProvisionsMatched::getPublish));
+        listSorted.sort((o1, o2) -> {
+            if(o1.getPublish() == null) {
+                return -1;
+            }
+
+            if(o2.getPublish() == null) {
+                return -1;
+            }
+
+            return o1.getPublish().compareTo(o2.getPublish());
+        });
+
+        return listSorted;
+    }
+
+    /**
+     * 关联文件也一并查出来
+     * @param matchLawHits
+     * @return
+     */
+    private Map<Long, List<IntegralFields>> makeAssociatedFiles(LawSearchHits matchLawHits) {
+        List<IntegralFields> hitsList = matchLawHits.getSearchHits();
+        return  this.makeAssociatedFiles(hitsList);
+    }
+
+    /**
+     * 关联文件也一并查出来
+     * @param hitsList
+     * @return
+     */
+    public Map<Long, List<IntegralFields>> makeAssociatedFiles(List<IntegralFields> hitsList) {
+        Set<Long> lawIdList = new HashSet<>();
+        for(IntegralFields fields : hitsList) {
+            lawIdList.add(fields.getLawId());
+        }
+
+        Map<Long, List<IntegralFields>> map = new HashMap<>(lawIdList.size());
+        for(Long lawId : lawIdList) {
+            IntegralParams param = new IntegralParams();
+            param.setLawId(lawId);
+            SearchSourceBuilder searchSourceBuilderOfProvision = this.mustConditions(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE, param);
+            LawSearchHits matchAssociatedFileHits = this.searchByPage(ElasticSearchPortal.INDEX__LAW_ASSOCIATED_FILE,
+                    1, 1000, null, null, null, null, searchSourceBuilderOfProvision);
+
+            if(!matchAssociatedFileHits.getSearchHits().isEmpty()) {
+                map.put(lawId, matchAssociatedFileHits.getSearchHits());
+            }
+        }
+        return map;
+    }
 }

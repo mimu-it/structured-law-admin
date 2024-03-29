@@ -34,8 +34,13 @@ public class SlLawServiceImpl implements ISlLawService
 
 
     @Override
-    public List<SlLaw> listAuthority() {
-        return slLawMapper.listAuthority();
+    public List<SlLaw> listAuthority(String authorityProvince, String authorityCity) {
+        return slLawMapper.listAuthority(authorityProvince, authorityCity);
+    }
+
+    @Override
+    public List<SlLaw> listCity(String authorityProvince) {
+        return slLawMapper.listCity(authorityProvince);
     }
 
     @Override

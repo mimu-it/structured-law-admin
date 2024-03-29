@@ -26,8 +26,10 @@ public class IntegralParams implements EsFields {
     private Integer[] statusArray;
     private String[] authorityArray;
 
-    private String authorityProvince;
-    private String authorityCity;
+    private String[] authorityProvinceArray;
+
+    private String[] authorityCityArray;
+
     private String authorityDistrict;
 
     private String contentText;
@@ -36,6 +38,8 @@ public class IntegralParams implements EsFields {
 
     private Long associatedFileId;
     private String associatedFileName;
+
+    private Integer status;
 
     @Override
     public String getLawName() {
@@ -135,24 +139,6 @@ public class IntegralParams implements EsFields {
     }
 
     @Override
-    public String getAuthorityProvince() {
-        return authorityProvince;
-    }
-
-    public void setAuthorityProvince(String authorityProvince) {
-        this.authorityProvince = authorityProvince;
-    }
-
-    @Override
-    public String getAuthorityCity() {
-        return authorityCity;
-    }
-
-    public void setAuthorityCity(String authorityCity) {
-        this.authorityCity = authorityCity;
-    }
-
-    @Override
     public String getAuthorityDistrict() {
         return authorityDistrict;
     }
@@ -204,5 +190,32 @@ public class IntegralParams implements EsFields {
 
     public void setDocumentType(String documentType) {
         this.documentType = documentType;
+    }
+
+    @Override
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
+    }
+
+    @Override
+    public String[] getAuthorityProvinceArray() {
+        return authorityProvinceArray;
+    }
+
+    public void setAuthorityProvinceArray(String[] authorityProvinceArray) {
+        this.authorityProvinceArray = authorityProvinceArray;
+    }
+
+    @Override
+    public String[] getAuthorityCityArray() {
+        return authorityCityArray;
+    }
+
+    public void setAuthorityCityArray(String[] authorityCityArray) {
+        this.authorityCityArray = authorityCityArray;
     }
 }

@@ -13,6 +13,7 @@ public class ProvisionTreeNode {
     private String parentPath;
     private String fullPath;
     private String termText;
+    private String tags;
     private List<ProvisionTreeNode> children;
 
     public String getLabel() {
@@ -53,5 +54,13 @@ public class ProvisionTreeNode {
 
     public void setFullPath(String fullPath) {
         this.fullPath = fullPath;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 }

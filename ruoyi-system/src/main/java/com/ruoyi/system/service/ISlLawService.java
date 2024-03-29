@@ -22,7 +22,14 @@ public interface ISlLawService
      * 列举"制定机关"， 实际就是法规类型
      * @return
      */
-    List<SlLaw> listAuthority();
+    List<SlLaw> listAuthority(String authorityProvince, String authorityCity);
+
+    /**
+     * 获取城市
+     * @param authorityProvince
+     * @return
+     */
+    List<SlLaw> listCity(String authorityProvince);
 
     /**
      * 列举状态

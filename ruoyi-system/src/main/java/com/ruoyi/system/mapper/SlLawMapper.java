@@ -24,7 +24,14 @@ public interface SlLawMapper
      * 获取制定机关选项
      * @return
      */
-    List<SlLaw> listAuthority();
+    List<SlLaw> listAuthority(@Param("authorityProvince")String authorityProvince,
+                              @Param("authorityCity")String authorityCity);
+
+    /**
+     * 获取law相关的城市
+     * @return
+     */
+    List<SlLaw> listCity(@Param("authorityProvince")String authorityProvince);
 
     /**
      * 获取状态选项

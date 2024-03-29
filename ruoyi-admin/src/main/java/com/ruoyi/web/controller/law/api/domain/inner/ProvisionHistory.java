@@ -2,6 +2,7 @@ package com.ruoyi.web.controller.law.api.domain.inner;
 
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,5 +35,19 @@ public class ProvisionHistory {
         }
 
         this.termTitleHistory.put(termTitle, history);
+    }
+
+    public void addTermTitleHistory(String termTitle, IntegralFields historyItem) {
+        if(this.termTitleHistory == null) {
+            this.termTitleHistory = new HashMap<>();
+        }
+
+        List<IntegralFields> list = this.termTitleHistory.get(termTitle);
+        if(list == null) {
+            list = new ArrayList<>();
+            this.termTitleHistory.put(termTitle, list);
+        }
+
+        list.add(historyItem);
     }
 }

@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.law.cache;
 
 import cn.hutool.core.lang.TypeReference;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
@@ -10,6 +11,7 @@ import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.service.ISlLawCategoryService;
 import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.law.api.domain.inner.TreeNode;
+import com.ruoyi.web.controller.law.values.LawStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -18,10 +20,7 @@ import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -55,7 +54,7 @@ public class LawCache {
         List<String> lawLevelOptions = slLawCategoryService.listLawLevel();
         redisCache.setCacheObject(getConditionOptionsCacheKey(SlLaw.LAW_LEVEL), lawLevelOptions);
 
-        List<SlLaw> authorityOptions = slLawService.listAuthority();
+        List<SlLaw> authorityOptions = slLawService.listAuthority(null, null);
         redisCache.setCacheObject(getConditionOptionsCacheKey(SlLaw.AUTHORITY), authorityOptions);
 
         List<Integer> statusOptions = slLawService.listStatus();
@@ -109,9 +108,96 @@ public class LawCache {
     private List<TreeNode> initAuthorityTree() {
         try {
             String configStr = readConfig("authority/tree.json");
-            return JSONUtil.toBean(configStr, new TypeReference<List<TreeNode>>() {}, false);
+            List<TreeNode> orgList = JSONUtil.toBean(configStr, new TypeReference<List<TreeNode>>() {}, false);
+            for(TreeNode org : orgList) {
+                dfsIterative(org);
+            }
+
+            return orgList;
         } catch (IOException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * 便利 tree ，对里面的数据进行初始化
+     * @param root
+     */
+    private void dfsIterative(TreeNode root) {
+        if (root == null) {
+            return;
+        }
+        Stack<TreeNode> stack = new Stack<>();
+        stack.push(root);
+
+        while (!stack.isEmpty()) {
+            TreeNode current = stack.pop();
+
+            /**
+             * authority/tree.json 已经构建了 org 与 province 的关系，所以不用关心 province 这块的数据
+             */
+            if("province".equals(current.getNodeType())) {
+                if(StrUtil.isBlank(current.getLabel())) {
+                    /** 数据存在 current.getLabel() 为空的 */
+                    continue;
+                }
+
+                List<SlLaw> cityList = slLawService.listCity(current.getLabel());
+                if(cityList != null) {
+                    List<TreeNode> children = current.getChildren();
+                    if(children == null) {
+                        children = new ArrayList<>();
+                        current.setChildren(children);
+                    }
+
+                    for(SlLaw cityHolder : cityList) {
+                        if(StrUtil.isNotBlank(cityHolder.getAuthorityCity())) {
+                            TreeNode cityNode = new TreeNode();
+                            cityNode.setLabel(cityHolder.getAuthorityCity());
+                            cityNode.setNodeType("city");
+                            //cityNode.setParent(current);
+                            children.add(cityNode);
+                        }
+                    }
+                }
+            }
+            else if("city".equals(current.getNodeType())) {
+                if(StrUtil.isBlank(current.getLabel())) {
+                    /** 数据存在 current.getLabel() 为空的 */
+                    continue;
+                }
+
+                List<SlLaw> authorityList = slLawService.listAuthority(null, current.getLabel());
+                if(authorityList != null) {
+                    List<TreeNode> children = current.getChildren();
+                    if(children == null) {
+                        children = new ArrayList<>();
+                        current.setChildren(children);
+                    }
+
+                    for(SlLaw authorityHolder : authorityList) {
+                        if(StrUtil.isNotBlank(authorityHolder.getAuthority())) {
+                            TreeNode cityNode = new TreeNode();
+                            cityNode.setLabel(authorityHolder.getAuthority());
+                            cityNode.setNodeType("authority");
+
+                            //为了避免循环引用，导致json输出时发生异常level too large : 2048，就复制一下parent
+                            TreeNode parentNodeCopy = new TreeNode();
+                            parentNodeCopy.setLabel(current.getLabel());
+                            parentNodeCopy.setNodeType(current.getNodeType());
+                            cityNode.setParent(parentNodeCopy);
+                            children.add(cityNode);
+                        }
+                    }
+                }
+            }
+
+            if(current.getChildren() != null) {
+                // 将子节点压入栈中，以便后续遍历
+                for (int i = current.getChildren().size() - 1; i >= 0; i--) {
+                    stack.push(current.getChildren().get(i));
+                }
+            }
         }
     }
 
@@ -159,12 +245,16 @@ public class LawCache {
      */
     public Map<Integer, String> getStatusOptionsMap() {
         Map<Integer, String> map = new HashMap<>(4);
-        map.put(1, "有效");
+        for (LawStatus lawStatus : LawStatus.values()) {
+            map.put(lawStatus.getKey(), lawStatus.getValue());
+        }
+
+        /*map.put(1, "有效");
         map.put(3, "尚未生效");
         map.put(5, "已修改");
         map.put(9, "已废止");
         map.put(7, "未知");
-        map.put(0, "无");
+        map.put(0, "无");*/
         return map;
     }
 }

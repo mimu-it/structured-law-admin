@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.law.srv;
 import cn.hutool.cache.CacheUtil;
 import cn.hutool.cache.impl.LFUCache;
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
@@ -277,7 +278,8 @@ public class PortalSrv {
                 IntegralFields.LAW_NAME,
                 IntegralFields.LAW_ID,
                 IntegralFields.PROVISION_ID,
-                IntegralFields.AUTHORITY
+                IntegralFields.AUTHORITY,
+                IntegralFields.TAGS
         });
 
         List<ProvisionTreeNode> allProvisionNode = new ArrayList<>();
@@ -296,6 +298,11 @@ public class PortalSrv {
             node.setParentPath(parentPath);
             node.setFullPath(title);
             node.setTermText(provision.getTermText());
+
+            if(provision.getTags() != null) {
+                node.setTags(CollectionUtil.join(provision.getTags(), ";"));
+            }
+
             allProvisionNode.add(node);
         }
 
