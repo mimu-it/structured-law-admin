@@ -553,10 +553,13 @@ public class PortalController extends BaseController {
 
     /**
      * 对应小包公的 category，页面上会对查询结果进行分类
+     *
+     * http://localhost:8080/structured-law/portal/category/search-law?page_num=1&content_text=最高人民法院关于人民法院审理离婚案件处理财产分割问题的若干具体意见%20夫妻共同财产&law_level=司法解释&status=[1]
+     *
      * @return
      */
     @GetMapping("/category/search-law")
-    public R<LawWithProvisionsMatchedPage> searchPageByLawLevel(@RequestParam(value = Constants.PAGE_NUM, required = false) Integer pageNum,
+    public R<CategoryLawWithProvisionsMatched> searchPageByLawLevel(@RequestParam(value = Constants.PAGE_NUM, required = false) Integer pageNum,
                                                        @RequestParam(value = Constants.PAGE_SIZE, required = false) Integer pageSize,
                                                        @RequestParam(value = Constants.SORT_FIELD, required = false) String sortField,
                                                        @RequestParam(value = Constants.SORT_TYPE, required = false) Boolean sortType,
@@ -603,7 +606,31 @@ public class PortalController extends BaseController {
         ParamProcessor.handleAuthorityProvince(integralParams, authorityArrayProvinceStr);
 
         LawWithProvisionsMatchedPage page = elasticSearchPortal.searchProvisionDistinctByLawIdInPage(pageNum, pageSize, integralParams);
-        return R.ok(page);
+
+
+        /**
+         * 统计, 因为这个方法的参数是指定了效力级别，所以要重新构造LawLevelArray，才能用于统计
+         */
+        integralParams.setLawLevelArray(new String[]{ lawLevelStr });
+        Statistics statistics = new Statistics();
+        /** 统计不同状态下的匹配总数 */
+        List<StatisticsRecord> statusCountList = elasticSearchPortal.countGroupByStatus(ElasticSearchPortal.INDEX__LAW_PROVISION, integralParams);
+        statistics.put(IntegralFields.STATUS, statusCountList);
+
+        /** 统计不同效力级别下的匹配总数 */
+        List<StatisticsRecord> lawLevelCountList = elasticSearchPortal.countGroupByLawLevel(ElasticSearchPortal.INDEX__LAW_PROVISION, integralParams);
+        statistics.put(IntegralFields.LAW_LEVEL, lawLevelCountList);
+
+        /** 统计不同制定机关所在省级别下的匹配总数 */
+        List<TreeNode> authorityCountList = elasticSearchPortal.countGroupByAuthority(ElasticSearchPortal.INDEX__LAW_PROVISION, integralParams);
+        statistics.put(IntegralFields.AUTHORITY, authorityCountList);
+
+
+        CategoryLawWithProvisionsMatched categoryLawWithProvisionsMatched = new CategoryLawWithProvisionsMatched();
+        categoryLawWithProvisionsMatched.setLawWithProvisionsMatchedPage(page);
+        categoryLawWithProvisionsMatched.setStatistics(statistics);
+
+        return R.ok(categoryLawWithProvisionsMatched);
     }
 
 
@@ -725,7 +752,7 @@ public class PortalController extends BaseController {
                     pageNum, pageSize, null,
                     new String[]{IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT, IntegralFields.TITLE}, sortField, sortType, integralParams);
 
-            if (lawWithProvisionsSearchHitsList != null) {
+            if (lawWithProvisionsSearchHitsList != null && !lawWithProvisionsSearchHitsList.isEmpty()) {
                 lawSearchHitsGroup.putLaw(level, lawWithProvisionsSearchHitsList);
             }
         }

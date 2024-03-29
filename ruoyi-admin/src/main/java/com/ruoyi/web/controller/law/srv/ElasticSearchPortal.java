@@ -774,27 +774,6 @@ public class ElasticSearchPortal {
                         AggregationBuilders.count(aggregationOfCountMatch).field(IntegralFields.LAW_NAME + ".keyword")
                 ).size(3);
 
-        //声明BucketPath，用于后面的bucket筛选
-        /*Map<String, String> bucketsPathsMap = new HashMap<>(2);
-        bucketsPathsMap.put("orderCount", "_count");
-        bucketsPathsMap.put("avgAmount", "avgAmount");
-        //设置脚本
-        Script script = new Script("params.avgAmount >= 100 && params.orderCount >=2");
-
-        //构建bucket选择器
-        BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("having", bucketsPathsMap, script);*/
-
-
-        /*TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms("distinct_law").field(IntegralFields.LAW_ID)
-                .order(BucketOrder.aggregation("uid_filter", true))
-                .subAggregation(
-                        AggregationBuilders.filter("uid_filter", QueryBuilders.queryStringQuery("刑法"))
-                ).size(3);*/
-
-        /*TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms("distinct_law").field(IntegralFields.LAW_ID)
-                .order(BucketOrder.count(true))
-                .size(3);*/
-
         //添加聚合
         searchSourceBuilder.aggregation(aggregationBuilder);
 
@@ -866,9 +845,7 @@ public class ElasticSearchPortal {
                         new String[]{ IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT, IntegralFields.TITLE }, IntegralFields.TITLE_NUMBER, true, clonedBuilder);
 
                 /** 从查询结果中获取法律名称，并继续从es中获取历史 */
-                SearchSourceBuilder clonedBuilderForHistory = cloneSearchSourceBuilder(searchSourceBuilder);
-                BoolQueryBuilder existingQueryForHistory = (BoolQueryBuilder) clonedBuilderForHistory.query();
-                List<LawWithProvisionsMatched> lawWithProvisionsMatched = this.makeLawWithProvisionsMatchedByBat(lawSearchHits.getSearchHits(), existingQueryForHistory);
+                List<LawWithProvisionsMatched> lawWithProvisionsMatched = this.makeLawWithProvisionsMatchedByBat(lawSearchHits.getSearchHits(), QueryBuilders.boolQuery());
 
                 /** 从查询结果中获取法律名称，并继续从es中获取关联文件 */
                 Map<Long, List<IntegralFields>> associatedFileMap = this.makeAssociatedFiles(lawSearchHits);
@@ -894,10 +871,6 @@ public class ElasticSearchPortal {
      *
      * @param pageNum
      * @param pageSize
-     * @param fields
-     * @param highlightFields
-     * @param sortField
-     * @param sortType
      * @param integralParams
      * @return
      */
@@ -948,7 +921,7 @@ public class ElasticSearchPortal {
             Long lawId = (Long) entry.getKey();
             long docCount = entry.getDocCount();
             // 处理每个聚合桶的数据...
-            logger.debug("lawId: {}, docCount: {}", lawId, docCount);
+            //logger.debug("lawId: {}, docCount: {}", lawId, docCount);
 
             SearchSourceBuilder clonedBuilderForSpecificLawId = cloneSearchSourceBuilder(searchSourceBuilder);
             BoolQueryBuilder existingQuery = (BoolQueryBuilder) clonedBuilderForSpecificLawId.query();
@@ -982,7 +955,7 @@ public class ElasticSearchPortal {
                 lawWithProvisionsMatched.setValidFrom(row.getValidFrom());
             }
 
-            logger.debug("matchedList: {}", matchedList);
+            //logger.debug("matchedList: {}", matchedList);
             lawWithProvisionsMatchedList.add(lawWithProvisionsMatched);
         }
 
@@ -996,15 +969,14 @@ public class ElasticSearchPortal {
         clonedBuilderForCardinality.size(0);
         searchRequest.source(clonedBuilderForCardinality);
 
-        long size;
+        long size = 0;
         try {
             searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-            if (null == searchResponse) {
-                size = 0;
+            if (null != searchResponse) {
+                // 这个field就是上面起的别名
+                ParsedCardinality parsedCardinality = searchResponse.getAggregations().get(distinctAggregationName);
+                size = parsedCardinality.getValue();
             }
-            // 这个field就是上面起的别名
-            ParsedCardinality parsedCardinality = searchResponse.getAggregations().get(distinctAggregationName);
-            size = parsedCardinality.getValue();
         } catch (IOException e) {
             logger.error("", e);
             throw new IllegalStateException(e);
@@ -1204,10 +1176,12 @@ public class ElasticSearchPortal {
             //long totalCount = this.countInEs(indexName, searchSourceBuilder);
             long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
 
-            StatisticsRecord statisticsRecord = new StatisticsRecord();
-            statisticsRecord.setName(lawCache.getStatusOptionsMap().get(status));
-            statisticsRecord.setTotal(totalCount);
-            resultList.add(statisticsRecord);
+            if(totalCount > 0) {
+                StatisticsRecord statisticsRecord = new StatisticsRecord();
+                statisticsRecord.setName(lawCache.getStatusOptionsMap().get(status));
+                statisticsRecord.setTotal(totalCount);
+                resultList.add(statisticsRecord);
+            }
         }
 
         integralParams.setStatusArray(null);
@@ -1360,10 +1334,12 @@ public class ElasticSearchPortal {
             //long totalCount = this.countInEs(indexName, searchSourceBuilder);
             long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
 
-            StatisticsRecord statisticsRecord = new StatisticsRecord();
-            statisticsRecord.setName(lawLevel);
-            statisticsRecord.setTotal(totalCount);
-            resultList.add(statisticsRecord);
+            if(totalCount > 0) {
+                StatisticsRecord statisticsRecord = new StatisticsRecord();
+                statisticsRecord.setName(lawLevel);
+                statisticsRecord.setTotal(totalCount);
+                resultList.add(statisticsRecord);
+            }
         }
         return resultList;
     }
@@ -1430,11 +1406,24 @@ public class ElasticSearchPortal {
             }
         }
 
-        if(filterAuthorityTree == null) {
+        if(filterAuthorityTree == null || filterAuthorityTree.isEmpty()) {
             filterAuthorityTree = authorityTree;
         }
 
         filterAuthorityTree.forEach((item) -> this.dfsIterativeToStat(item, indexName, integralParams));
+
+        /** 修剪树 */
+        Iterator<TreeNode> iterator = filterAuthorityTree.iterator();
+        while (iterator.hasNext()) {
+            TreeNode element = iterator.next();
+            if((long)element.getExtra() == 0) {
+                /** 如果该节点的统计值为0，就直接删除 */
+                iterator.remove();
+                continue;
+            }
+            /** 修剪内部树结构 */
+            this.dfsIterativeToTrimTree(element);
+        }
 
         return filterAuthorityTree;
     }
@@ -1516,7 +1505,7 @@ public class ElasticSearchPortal {
                     paramsList.add(node.getLabel());
                 }
 
-                String field = null;
+                String field;
                 String[] paramsArray = paramsList.toArray(new String[0]);
                 if("province".equals(childNodeType)) {
                     /** 先获取之前的参数，然后再把省市信息的查询条件并入 */
@@ -1584,6 +1573,43 @@ public class ElasticSearchPortal {
         }
     }
 
+    /**
+     * 修剪树，把统计值为0 的节点都删去
+     * @param root
+     */
+    private void dfsIterativeToTrimTree(TreeNode root) {
+        /** 能进入方法的，内部统计值不能为0 */
+        if (root == null) {
+            return;
+        }
+
+        if((long)root.getExtra() == 0) {
+            throw new IllegalArgumentException("Root treeNode stat count must be more than 0");
+        }
+
+        Stack<TreeNode> stack = new Stack<>();
+        stack.push(root);
+
+        while (!stack.isEmpty()) {
+            TreeNode current = stack.pop();
+
+            if(current.getChildren() != null) {
+                // 将子节点压入栈中，以便后续遍历
+                int childrenSize = current.getChildren().size();
+                for (int i = childrenSize - 1; i >= 0; i--) {
+                    TreeNode child = current.getChildren().get(i);
+                    Long childStatCount = (Long) child.getExtra();
+                    if(childStatCount == null || childStatCount == 0) {
+                        /** 因为是倒着遍历，所以可以直接删除 */
+                        current.getChildren().remove(i);
+                    }
+                    else {
+                        stack.push(current.getChildren().get(i));
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * 构造查询条件
@@ -1647,7 +1673,7 @@ public class ElasticSearchPortal {
      * @param hitsList
      * @return
      */
-    public List<LawWithProvisionsMatched> makeLawWithProvisionsMatchedByBat(List<IntegralFields> hitsList, BoolQueryBuilder existingQueryForHistory) {
+    public List<LawWithProvisionsMatched> makeLawWithProvisionsMatchedByBat(List<IntegralFields> hitsList, BoolQueryBuilder searchQueryForHistory) {
         /** 使用set的原因是可能同一个法律可能命中多次，不能使用同样参数反复查询 */
         Set<LawProvision> lawProvisionList = new HashSet<>();
         for(IntegralFields fields : hitsList) {
@@ -1657,24 +1683,24 @@ public class ElasticSearchPortal {
             lawProvisionList.add(lawProvision);
         }
 
-        Map<String, LawWithProvisionsMatched> map = new HashMap<>();
+        Map<Long, LawWithProvisionsMatched> map = new HashMap<>();
 
         /**
          * 这些匹配值需要根据 lawProvision.getLawName() 进行分类
          */
-        List<IntegralFields> matchHistoryList = this.listLawProvisionsHistoryByBat(lawProvisionList ,1000, null, existingQueryForHistory);
+        List<IntegralFields> matchHistoryList = this.listLawProvisionsHistoryByBat(lawProvisionList ,1000, null, searchQueryForHistory);
 
         if(!matchHistoryList.isEmpty()) {
             for(IntegralFields lawProvision : matchHistoryList) {
                 /** 开始分类 */
-                LawWithProvisionsMatched lawWithProvisionsMatched = map.get(lawProvision.getLawName());
+                LawWithProvisionsMatched lawWithProvisionsMatched = map.get(lawProvision.getLawId());
                 if(lawWithProvisionsMatched == null) {
                     /** 如果map中没有对应值，就初始化一个 */
                     lawWithProvisionsMatched = new LawWithProvisionsMatched();
-                    map.put(lawProvision.getLawName(), lawWithProvisionsMatched);
+                    map.put(lawProvision.getLawId(), lawWithProvisionsMatched);
                 }
 
-                if(lawWithProvisionsMatched.getId() != null) {
+                if(lawWithProvisionsMatched.getId() == null) {
                     lawWithProvisionsMatched.setId(lawProvision.getLawId());
                 }
 
@@ -1714,15 +1740,15 @@ public class ElasticSearchPortal {
                     lawWithProvisionsMatched.setStatusLabel(lawProvision.getStatusLabel());
                 }
 
-                if(lawWithProvisionsMatched.getStatus() != null) {
+                if(lawWithProvisionsMatched.getStatus() == null) {
                     lawWithProvisionsMatched.setStatus(lawProvision.getStatus());
                 }
 
-                if(lawWithProvisionsMatched.getPublish() != null) {
+                if(lawWithProvisionsMatched.getPublish() == null) {
                     lawWithProvisionsMatched.setPublish(lawProvision.getPublish());
                 }
 
-                if(lawWithProvisionsMatched.getValidFrom() != null) {
+                if(lawWithProvisionsMatched.getValidFrom() == null) {
                     lawWithProvisionsMatched.setValidFrom(lawProvision.getValidFrom());
                 }
 
@@ -1744,7 +1770,7 @@ public class ElasticSearchPortal {
         }
 
         List<LawWithProvisionsMatched> listSorted = new ArrayList<>();
-        map.forEach((k, lawWithProvisionsMatched) -> {
+        map.forEach((lawId, lawWithProvisionsMatched) -> {
             lawWithProvisionsMatched.getProvisionList().sort(Comparator.comparing(IntegralFields::getTitleNumber));
             listSorted.add(lawWithProvisionsMatched);
         });
@@ -1758,7 +1784,7 @@ public class ElasticSearchPortal {
                 return -1;
             }
 
-            return o1.getPublish().compareTo(o2.getPublish());
+            return o2.getPublish().compareTo(o1.getPublish());
         });
 
         return listSorted;

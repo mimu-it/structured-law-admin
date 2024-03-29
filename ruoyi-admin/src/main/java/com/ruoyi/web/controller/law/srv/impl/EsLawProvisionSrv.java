@@ -122,16 +122,31 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
         /** 分词查询 termText */
         String termText = integralParams.getTermText();
         if (StrUtil.isNotBlank(termText)) {
+            /** 如果遇到"刑法"，则LAW_NAME去找刑法  */
             Matcher matcher = pattern.matcher(termText);
             if(matcher.find()) {
                 String lawNameText = matcher.group(0);
                 String termTextPured = termText.replace(lawNameText, "");
-                BoolQueryBuilder mustQuery = QueryBuilders.boolQuery().must(QueryBuilders.matchQuery(IntegralFields.TERM_TEXT, termTextPured))
-                        .must(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawNameText));
+                /** 拆分输入，遇到空格拆分多个关键字用于匹配 */
+                String[] preciseKeywords = termTextPured.split("\\s+");
+
+                BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+                mustQuery.must(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawNameText));
+                for(String preciseKeyword : preciseKeywords) {
+                    mustQuery.must(QueryBuilders.matchPhraseQuery(IntegralFields.TERM_TEXT, preciseKeyword));
+                }
+
                 shouldQuery.should(mustQuery);
             }
             else {
-                shouldQuery.should(QueryBuilders.matchQuery(IntegralFields.TERM_TEXT, termText));
+                /** 拆分输入，遇到空格拆分多个关键字用于匹配 */
+                String[] preciseKeywords = termText.split("\\s+");
+                BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+                for(String preciseKeyword : preciseKeywords) {
+                    mustQuery.must(QueryBuilders.matchPhraseQuery(IntegralFields.TERM_TEXT, preciseKeyword));
+                }
+
+                shouldQuery.should(mustQuery);
             }
         }
         return shouldQuery;
