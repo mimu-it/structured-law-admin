@@ -9,12 +9,21 @@ import java.util.List;
  */
 public class ProvisionTreeNode {
 
+    private Long provisionId;
     private String label;
     private String parentPath;
     private String fullPath;
     private String termText;
     private String tags;
     private List<ProvisionTreeNode> children;
+
+    public Long getProvisionId() {
+        return provisionId;
+    }
+
+    public void setProvisionId(Long provisionId) {
+        this.provisionId = provisionId;
+    }
 
     public String getLabel() {
         return label;

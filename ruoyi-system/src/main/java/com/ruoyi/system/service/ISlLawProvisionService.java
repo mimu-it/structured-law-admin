@@ -1,6 +1,8 @@
 package com.ruoyi.system.service;
 
 import java.util.List;
+
+import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.domain.SlLawProvision;
 
 /**

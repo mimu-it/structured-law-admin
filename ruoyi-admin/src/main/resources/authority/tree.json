@@ -1,8 +1,24 @@
 [
   {
-    "label": "全国人大及其常委会",
+    "label": "全国性机关",
     "nodeType": "org",
     "children": [{
+      "label": "全国人民代表大会",
+      "nodeType": "authority",
+      "children": null
+    }, {
+      "label": "全国人民代表大会常务委员会",
+      "nodeType": "authority",
+      "children": null
+    }, {
+      "label": "中国人民政治协商会议",
+      "nodeType": "authority",
+      "children": null
+    }, {
+      "label": "中央人民政府委员会",
+      "nodeType": "authority",
+      "children": null
+    }, {
       "label": "国务院",
       "nodeType": "authority",
       "children": null
@@ -21,7 +37,7 @@
     }]
   },
   {
-    "label": "地方人大及其常委会",
+    "label": "地方性机关",
     "nodeType": "org",
     "children": [{
       "label": "北京市",

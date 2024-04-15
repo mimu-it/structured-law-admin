@@ -1,7 +1,6 @@
 package com.ruoyi.web.controller.law.srv;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -60,8 +59,6 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
-import org.elasticsearch.search.searchafter.SearchAfterBuilder;
-import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
@@ -303,6 +300,15 @@ public class ElasticSearchPortal {
                             suggestHits.setText(option.getText().toString());
                             suggestHits.setExtraData(option.getHit().getSourceAsMap());
 
+                            Map<String, Object> extraData = suggestHits.getExtraData();
+                            Long provisionId = Long.parseLong(StrUtil.toString(extraData.get(IntegralFields.PROVISION_ID)));
+                            if(provisionId != null) {
+                                IntegralFields row = this.getByProvisionId(provisionId, new String[]{IntegralFields.TITLE_NUMBER});
+                                if(row != null) {
+                                    extraData.put(IntegralFields.TITLE_NUMBER, row.getTitleNumber());
+                                }
+                            }
+
                             if (!suggestSet.contains(suggestHits)) {
                                 suggestSet.add(suggestHits);
                                 ++maxSuggest;
@@ -356,13 +362,14 @@ public class ElasticSearchPortal {
             }
 
             /** 为了只筛选出有效的值 */
-            Long provisionId = (Long) extraData.get(IntegralFields.PROVISION_ID);
+            Long provisionId = Long.parseLong(StrUtil.toString(extraData.get(IntegralFields.PROVISION_ID)));
             if(provisionId == null) {
                 throw new IllegalArgumentException("we should do search include provision id");
             }
 
             IntegralFields matchOne = this.getByProvisionId(provisionId, new String[]{
-                    IntegralFields.STATUS
+                    IntegralFields.STATUS,
+                    IntegralFields.TITLE_NUMBER
             });
 
             if(matchOne.getStatus().intValue() != LawStatus.effective.getKey().intValue()) {
@@ -370,6 +377,9 @@ public class ElasticSearchPortal {
                 continue;
             }
 
+            if(StrUtil.isNotBlank(matchOne.getTitleNumber())) {
+                extraData.put(IntegralFields.TITLE_NUMBER, matchOne.getTitleNumber());
+            }
             suggestHits.setExtraData(extraData);
 
             suggestSet.add(suggestHits);
@@ -768,10 +778,20 @@ public class ElasticSearchPortal {
         //定义avg聚合，指定字段为法律ID
         String aggregationTermsName = "distinct_law";
         String aggregationOfCountMatch = "count_match";
+        if(StrUtil.isBlank(sortField)) {
+            sortField = IntegralFields.PUBLISH;
+        }
+
+        if(sortType == null) {
+            sortType = false;
+        }
+
         TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(aggregationTermsName).field(IntegralFields.LAW_ID)
-                .order(BucketOrder.aggregation(aggregationOfCountMatch, false))
+                //告诉引擎我需要按名称为 aggregationOfCountMatch 的方案排序， subAggregation 介绍了aggregationOfCountMatch的排序是如何定义的
+                .order(BucketOrder.aggregation(aggregationOfCountMatch, sortType))
                 .subAggregation(
-                        AggregationBuilders.count(aggregationOfCountMatch).field(IntegralFields.LAW_NAME + ".keyword")
+                        //AggregationBuilders.count(aggregationOfCountMatch).field(IntegralFields.LAW_NAME + ".keyword")
+                        AggregationBuilders.min(aggregationOfCountMatch).field(sortField)
                 ).size(3);
 
         //添加聚合
@@ -1159,9 +1179,11 @@ public class ElasticSearchPortal {
      * @return
      */
     public List<StatisticsRecord> countGroupByStatus(String indexName, IntegralParams integralParams) {
+        IntegralParams copy = BeanUtil.toBean(integralParams, IntegralParams.class);
+
         List<StatisticsRecord> resultList = new ArrayList<>();
 
-        Integer[] statusArray = integralParams.getStatusArray();
+        Integer[] statusArray = copy.getStatusArray();
         if(statusArray == null || statusArray.length == 0) {
             List<Integer> status = new ArrayList<>();
             Map<Integer, String> statusTypesMap = lawCache.getStatusOptionsMap();
@@ -1170,8 +1192,8 @@ public class ElasticSearchPortal {
         }
 
         for(Integer status : statusArray) {
-            integralParams.setStatusArray(new Integer[]{ status });
-            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, integralParams);
+            copy.setStatusArray(new Integer[]{ status });
+            SearchSourceBuilder searchSourceBuilder = this.mustConditions(indexName, copy);
 
             //long totalCount = this.countInEs(indexName, searchSourceBuilder);
             long totalCount = this.countGroupDistinct(indexName, searchSourceBuilder, IntegralFields.LAW_ID);
@@ -1184,7 +1206,6 @@ public class ElasticSearchPortal {
             }
         }
 
-        integralParams.setStatusArray(null);
         return resultList;
     }
 
@@ -1355,17 +1376,23 @@ public class ElasticSearchPortal {
      */
     public List<TreeNode> countGroupByAuthority(String indexName, IntegralParams integralParams) {
         IntegralParams copy = BeanUtil.toBean(integralParams, IntegralParams.class);
-        integralParams.getAuthorityArray();
 
         List<TreeNode> authorityTree = lawCache.getAuthorityTree();
 
+        /**
+         * 因为是List，filterAuthorityTree的元素就是各个查询维度的根节点
+         */
         List<TreeNode> filterAuthorityTree = new ArrayList<>();
         if(ArrayUtil.isNotEmpty(copy.getAuthorityArray())) {
+            /** 如果是具体的机构，就查这个机构归属的省市级别 */
             for(String label : copy.getAuthorityArray()) {
                 for(TreeNode node : authorityTree) {
                     TreeNode targetNode = this.findNode(node, label);
                     if(targetNode != null) {
                         TreeNode parentNode = targetNode.getParent();
+                        if(parentNode == null) {
+                            continue;
+                        }
 
                         /** 当目标是"北京市人大(含常委会)"时，不是直接返回"北京市人大(含常委会)"这个节点，
                          *  而是要把其父节点"北京"， 也返回
@@ -1385,6 +1412,7 @@ public class ElasticSearchPortal {
         }
 
         if(ArrayUtil.isNotEmpty(copy.getAuthorityCityArray())) {
+            /** 如果参数中是城市参数，就让filterAuthorityTree 有这些城市节点 */
             for(String label : copy.getAuthorityCityArray()) {
                 for(TreeNode node : authorityTree) {
                     TreeNode targetNode = this.findNode(node, label);
@@ -1396,6 +1424,7 @@ public class ElasticSearchPortal {
         }
 
         if(ArrayUtil.isNotEmpty(copy.getAuthorityProvinceArray())) {
+            /** 如果参数中是省份参数，就让filterAuthorityTree 有这些省份节点 */
             for(String label : copy.getAuthorityProvinceArray()) {
                 for(TreeNode node : authorityTree) {
                     TreeNode targetNode = this.findNode(node, label);
@@ -1407,6 +1436,7 @@ public class ElasticSearchPortal {
         }
 
         if(filterAuthorityTree == null || filterAuthorityTree.isEmpty()) {
+            /** filterAuthorityTree 经过筛选逻辑后如果没有值，那么就在页面上显示全树 */
             filterAuthorityTree = authorityTree;
         }
 
@@ -1513,6 +1543,10 @@ public class ElasticSearchPortal {
                 }
                 else if("authority".equals(childNodeType)) {
                     field = IntegralFields.AUTHORITY;
+                }
+                else if("org".equals(childNodeType)) {
+                    field = IntegralFields.AUTHORITY;
+                    //TODO 如果是org，则找其下所以的authority, 但是如果不点击org类型的节点就没事
                 }
                 else {
                     throw new IllegalStateException("Org TreeNode's node type is illegal");
@@ -1646,6 +1680,7 @@ public class ElasticSearchPortal {
         for(LawProvision lawProvision : lawProvisionList) {
             List<IntegralFields> matchHistoryList = this.listLawProvisionsHistory(lawProvision.getLawName(),
                     lawProvision.getTermTitle(),1000, new String[]{
+                            IntegralFields.LAW_ID,
                             IntegralFields.LAW_NAME,
                             IntegralFields.PUBLISH,
                             IntegralFields.VALID_FROM,

@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.law;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
@@ -11,6 +12,8 @@ import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.system.domain.SlLaw;
+import com.ruoyi.system.domain.SlLawProvision;
+import com.ruoyi.system.service.ISlLawProvisionService;
 import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralFields;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
@@ -24,8 +27,11 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
+import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -69,6 +75,9 @@ public class PortalController extends BaseController {
 
     @Resource
     private ISlLawService slLawService;
+
+    @Resource
+    private ISlLawProvisionService slLawProvisionService;
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
@@ -404,6 +413,27 @@ public class PortalController extends BaseController {
         return R.ok(new ArrayList<>());
     }
 
+    /**
+     * 通过法条id 获取历史变迁
+     * @param provisionId
+     * @param size
+     * @return
+     */
+    @GetMapping("/law-provision-history")
+    public R<List<IntegralFields>> listLawProvisionHistory(@RequestParam(value = IntegralFields.PROVISION_ID, required = false) long provisionId,
+                                                  @RequestParam(value = Constants.SIZE, required = false) Integer size) {
+        SlLawProvision lawProvision = slLawProvisionService.selectSlLawProvisionById(provisionId);
+        if (lawProvision == null) {
+            return R.ok(new ArrayList<>());
+        }
+
+        if(StrUtil.isBlank(lawProvision.getTitleNumber())) {
+            return R.ok(new ArrayList<>());
+        }
+
+        return this.listLawHistory(lawProvision.getLawId(), lawProvision.getTitle(), size);
+    }
+
 
     /**
      * 获取各个条件的选项
@@ -443,6 +473,8 @@ public class PortalController extends BaseController {
      *
      * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&content_text=婚姻&authority_province=["浙江省"]&authority=["南京市人民代表大会"]
      * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&content_text=婚姻&authority_province=["辽宁省"]
+     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&content_text=婚姻&authority=["全国人民代表大会常务委员会"]
+     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&law_level=["地方性法规"]&status=[9]
      *
      * @param pageNum
      * @param pageSize
@@ -533,7 +565,7 @@ public class PortalController extends BaseController {
         /**
          * 统计
          */
-        integralParams.setLawLevel(null);
+
         Statistics statistics = new Statistics();
         /** 统计不同状态下的匹配总数 */
         List<StatisticsRecord> statusCountList = elasticSearchPortal.countGroupByStatus(ElasticSearchPortal.INDEX__LAW_PROVISION, integralParams);
@@ -744,13 +776,14 @@ public class PortalController extends BaseController {
          */
         LawSearchHitsGroup lawSearchHitsGroup = new LawSearchHitsGroup();
         for (String level : integralParams.getLawLevelArray()) {
+            IntegralParams copy = BeanUtil.toBean(integralParams, IntegralParams.class);
             /** 分开层级展现 */
-            integralParams.setLawLevel(level);
+            copy.setLawLevel(level);
 
             /** 查询es */
             List<LawWithProvisionsSearchHits> lawWithProvisionsSearchHitsList = elasticSearchPortal.searchProvisionAggregationsDistinctByLawId(
                     pageNum, pageSize, null,
-                    new String[]{IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT, IntegralFields.TITLE}, sortField, sortType, integralParams);
+                    new String[]{IntegralFields.LAW_NAME, IntegralFields.TERM_TEXT, IntegralFields.TITLE}, sortField, sortType, copy);
 
             if (lawWithProvisionsSearchHitsList != null && !lawWithProvisionsSearchHitsList.isEmpty()) {
                 lawSearchHitsGroup.putLaw(level, lawWithProvisionsSearchHitsList);

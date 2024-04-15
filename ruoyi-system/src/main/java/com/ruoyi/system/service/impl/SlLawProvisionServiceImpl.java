@@ -35,6 +35,7 @@ public class SlLawProvisionServiceImpl implements ISlLawProvisionService
         return slLawProvisionMapper.countTags();
     }
 
+
     @Override
     public List<SlLawProvision> selectSlLawProvisionTagsList() {
         return slLawProvisionMapper.selectSlLawProvisionTagsList();

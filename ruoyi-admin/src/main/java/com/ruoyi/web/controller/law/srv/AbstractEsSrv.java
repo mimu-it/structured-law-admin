@@ -105,17 +105,21 @@ public abstract class AbstractEsSrv {
     protected BoolQueryBuilder makeCommonBoolQueryBuilder(EsFields condition) {
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
 
+        Long lawId = condition.getLawId();
+        if(lawId != null) {
+            boolQueryBuilder.must(QueryBuilders.termQuery(IntegralFields.LAW_ID, lawId));
+        }
+
+
+        BoolQueryBuilder authorityBoolQueryBuilder = QueryBuilders.boolQuery();
         /**
          * 立法机关也是多选
          */
         String[] authorityArray = condition.getAuthorityArray();
         if (ArrayUtil.isNotEmpty(authorityArray)) {
-            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
             for(String authority : authorityArray) {
-                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY, authority));
+                authorityBoolQueryBuilder.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY, authority));
             }
-
-            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
         /**
@@ -123,12 +127,9 @@ public abstract class AbstractEsSrv {
          */
         String[] authorityProvinceArray = condition.getAuthorityProvinceArray();
         if (ArrayUtil.isNotEmpty(authorityProvinceArray)) {
-            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
             for(String province : authorityProvinceArray) {
-                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_PROVINCE, province));
+                authorityBoolQueryBuilder.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_PROVINCE, province));
             }
-
-            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
         /**
@@ -136,12 +137,9 @@ public abstract class AbstractEsSrv {
          */
         String[] authorityCityArray = condition.getAuthorityCityArray();
         if (ArrayUtil.isNotEmpty(authorityCityArray)) {
-            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
             for(String city : authorityCityArray) {
-                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_CITY, city));
+                authorityBoolQueryBuilder.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_CITY, city));
             }
-
-            boolQueryBuilder.must(boolQueryBuilderShould);
         }
 
         /**
@@ -149,14 +147,23 @@ public abstract class AbstractEsSrv {
          */
         String authorityDistrict = condition.getAuthorityDistrict();
         if (StrUtil.isNotBlank(authorityDistrict)) {
-            BoolQueryBuilder boolQueryBuilderShould = QueryBuilders.boolQuery();
-
             List<String> districts = JSONUtil.toList(authorityDistrict, String.class);
             for(String district : districts) {
-                boolQueryBuilderShould.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_DISTRICT, district));
+                authorityBoolQueryBuilder.should(QueryBuilders.termQuery(IntegralFields.AUTHORITY_DISTRICT, district));
             }
-
-            boolQueryBuilder.must(boolQueryBuilderShould);
+        }
+        
+        if(authorityBoolQueryBuilder.hasClauses()) {
+            /** 如果authorityBoolQueryBuilder查询中存在条件 */
+            /**
+             * 设置minimum_should_match，至少should要满足1条
+             * 可以是具体的数值或百分比
+             */
+            authorityBoolQueryBuilder.minimumShouldMatch(1);
+            /**
+             * 立法机关相关的全是或
+             */
+            boolQueryBuilder.must(authorityBoolQueryBuilder);
         }
 
         /**

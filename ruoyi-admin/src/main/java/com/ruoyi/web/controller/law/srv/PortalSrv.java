@@ -274,6 +274,7 @@ public class PortalSrv {
     public List<ProvisionTreeNode> makeProvisionTree(long lawId) {
         List<IntegralFields> provisionList = elasticSearchPortal.listProvisionsByLawId(lawId, null, 10000, new String[]{
                 IntegralFields.TITLE,
+                IntegralFields.TITLE_NUMBER,
                 IntegralFields.TERM_TEXT,
                 IntegralFields.LAW_NAME,
                 IntegralFields.LAW_ID,
@@ -284,6 +285,10 @@ public class PortalSrv {
 
         List<ProvisionTreeNode> allProvisionNode = new ArrayList<>();
         for(IntegralFields provision : provisionList) {
+            if(StrUtil.isBlank(provision.getTitleNumber())) {
+                continue;
+            }
+
             String title = provision.getTitle();
             int lastIndex = title.lastIndexOf("/");
             String label = title.substring(lastIndex + 1);
@@ -294,6 +299,7 @@ public class PortalSrv {
             }
 
             ProvisionTreeNode node = new ProvisionTreeNode();
+            node.setProvisionId(provision.getProvisionId());
             node.setLabel(label);
             node.setParentPath(parentPath);
             node.setFullPath(title);

@@ -142,8 +142,10 @@ public class LawCache {
                     continue;
                 }
 
+                /** 如果父是province，就找该 province 下的city */
                 List<SlLaw> cityList = slLawService.listCity(current.getLabel());
                 if(cityList != null) {
+                    /** 给 province 增加子节点 */
                     List<TreeNode> children = current.getChildren();
                     if(children == null) {
                         children = new ArrayList<>();
@@ -155,7 +157,8 @@ public class LawCache {
                             TreeNode cityNode = new TreeNode();
                             cityNode.setLabel(cityHolder.getAuthorityCity());
                             cityNode.setNodeType("city");
-                            //cityNode.setParent(current);
+
+                            makeCurrentAsFakeParentForShow(current, cityNode);
                             children.add(cityNode);
                         }
                     }
@@ -167,6 +170,7 @@ public class LawCache {
                     continue;
                 }
 
+                /** 如果父是city，就找authority*/
                 List<SlLaw> authorityList = slLawService.listAuthority(null, current.getLabel());
                 if(authorityList != null) {
                     List<TreeNode> children = current.getChildren();
@@ -182,10 +186,7 @@ public class LawCache {
                             cityNode.setNodeType("authority");
 
                             //为了避免循环引用，导致json输出时发生异常level too large : 2048，就复制一下parent
-                            TreeNode parentNodeCopy = new TreeNode();
-                            parentNodeCopy.setLabel(current.getLabel());
-                            parentNodeCopy.setNodeType(current.getNodeType());
-                            cityNode.setParent(parentNodeCopy);
+                            makeCurrentAsFakeParentForShow(current, cityNode);
                             children.add(cityNode);
                         }
                     }
@@ -194,11 +195,32 @@ public class LawCache {
 
             if(current.getChildren() != null) {
                 // 将子节点压入栈中，以便后续遍历
-                for (int i = current.getChildren().size() - 1; i >= 0; i--) {
-                    stack.push(current.getChildren().get(i));
+                List<TreeNode> list = current.getChildren();
+                for (int i = list.size() - 1; i >= 0; i--) {
+                    TreeNode child = list.get(i);
+
+                    if(child.getParent() == null) {
+                        makeCurrentAsFakeParentForShow(current, child);
+                    }
+
+                    stack.push(child);
                 }
             }
         }
+    }
+
+    /**
+     * 如果使用真正的parent，会附带 children 指向自己，从而引发循环引用，
+     * 导致json输出时发生异常level too large : 2048，就复制一下parent
+     * 所以就复制一个不带children的假父节点用于页面显示
+     * @param current
+     * @param cityNode
+     */
+    private void makeCurrentAsFakeParentForShow(TreeNode current, TreeNode cityNode) {
+        TreeNode parentNodeCopy = new TreeNode();
+        parentNodeCopy.setLabel(current.getLabel());
+        parentNodeCopy.setNodeType(current.getNodeType());
+        cityNode.setParent(parentNodeCopy);
     }
 
     /**

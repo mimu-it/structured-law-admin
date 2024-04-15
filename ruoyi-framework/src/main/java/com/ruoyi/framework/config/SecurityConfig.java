@@ -120,6 +120,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
                         "/structured-law/portal/law-provision-content",
                         "/structured-law/portal/law-content",
                         "/structured-law/portal/law-history",
+                        "/structured-law/portal/law-provision-history",
                         "/structured-law/portal/wild-search",
                         "/structured-law/portal/wild-search-law",
                         "/structured-law/portal/wild-search-provision",
