@@ -27,11 +27,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,7 +38,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.File;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -54,6 +49,11 @@ import java.util.regex.Pattern;
  * @author xiao.hu
  * @date 2023-12-25
  * @apiNote 查看接口文档 http://localhost:8080/swagger-ui/index.html#/portal-controller
+ *
+ * 后台管理需要启动vue
+ *
+ *
+ *
  */
 @Api("法能手法库服务接口")
 @RestController
@@ -189,7 +189,7 @@ public class PortalController extends BaseController {
 
     /**
      * 获取法律详情, 可获取全文结构树
-     * [已测， 注意如果es内存不够会提示出错，奔溃] http://localhost:8080/structured-law/portal/law-content?law_id=110
+     * [已测， 注意如果es内存不够会提示出错，奔溃] http://localhost:8080/structured-law/portal/law-content?law_id=253
      *
      * @param lawId
      * @param size
@@ -334,7 +334,7 @@ public class PortalController extends BaseController {
     /**
      * 检索某个法律的历史
      * <p>
-     * http://localhost:8080/structured-law/portal/law-history?law_id=123
+     * http://localhost:8080/structured-law/portal/law-history?law_id=253
      *
      * @param lawId
      * @param size

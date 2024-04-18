@@ -12,6 +12,15 @@ import org.springframework.scheduling.annotation.EnableAsync;
  *
  * admin
  * admin123
+ *
+ * 备份全库
+ * docker exec -it mysql8.0.29 /bin/bash
+ * mysqldump -uroot -p123456 structured_law > /20240418-all.sql
+ * docker cp 72fa3616eb56:/20240418-all.sql /Volumes/HD-FOR-MAC/BIZ_ENV/sales/绿邦/法派/大数据结构化/数据备份
+ *
+ * DROP DATABASE structured_law;
+ * source /root/pro_sql/20240124-all.sql
+ *
  * 
  * @author ruoyi
  */

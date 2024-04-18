@@ -1,13 +1,18 @@
 package com.ruoyi.web.controller.law.processor.controller;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.convert.NumberChineseFormatter;
+import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
 
-import java.util.Arrays;
+import javax.swing.text.NumberFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * @author xiao.hu
@@ -20,6 +25,37 @@ public class ParamProcessor {
      */
     private static Pattern pattern = Pattern.compile("\\d+");
 
+    private static Pattern patternMatchLawName = Pattern.compile("[\\u4e00-\\u9fa5]+[法|法典]");
+    private static Pattern patternMatchTermTitle = Pattern.compile("第[一二三四五六七八九十百千万亿\\d]+条");
+    private static Pattern patternMatchTermArabicTitle = Pattern.compile("第([\\d]+)条");
+
+    /**
+     *
+     * @param text
+     * @return
+     */
+    private static final List<String> findAllMatch(Pattern pattern, String text) {
+        Matcher oMatcher = pattern.matcher(text);
+        List<String> lawNames = new ArrayList<>();
+        while(oMatcher.find()) {
+            lawNames.add(oMatcher.group());
+        }
+        return lawNames;
+    }
+
+    /**
+     *
+     * @param termTitle
+     * @return
+     */
+    private static final String toChineseTermTitle(String termTitle) {
+        Matcher matcher = patternMatchTermArabicTitle.matcher(termTitle);
+        while (matcher.find()) {
+            String number = matcher.group(1);
+            termTitle = termTitle.replace(number, NumberChineseFormatter.format(Long.parseLong(number), false));
+        }
+        return termTitle;
+    }
 
     /**
      * 如果大输入框输入了罪名的查询条件，则直接去定位到罪名查询
@@ -48,7 +84,21 @@ public class ParamProcessor {
     public static final void handleBigInput(IntegralParams integralParams, String contentText) {
         if(StrUtil.isNotBlank(contentText)) {
             if(StrUtil.isBlank(integralParams.getLawName())) {
-                integralParams.setLawName(contentText);
+                /** 从文本中找到可能的法律名称 */
+                List<String> lawNameMatchList = findAllMatch(patternMatchLawName, contentText);
+                if(!lawNameMatchList.isEmpty()) {
+                    integralParams.setLawName(lawNameMatchList.get(0));
+                }
+            }
+
+            String[] termTitleArray = integralParams.getTermTitleArray();
+            if(termTitleArray == null || termTitleArray.length == 0) {
+                /** 从文本中找到可能的条款序号 */
+                List<String> termTitleMatchList = findAllMatch(patternMatchTermTitle, contentText);
+                if(!termTitleMatchList.isEmpty()) {
+                    List<String> chineseTermTitleList = termTitleMatchList.stream().map((item) -> toChineseTermTitle(item)).collect(Collectors.toList());
+                    integralParams.setTermTitleArray(chineseTermTitleList.toArray(new String[0]));
+                }
             }
 
             if(StrUtil.isBlank(integralParams.getTermText())) {
