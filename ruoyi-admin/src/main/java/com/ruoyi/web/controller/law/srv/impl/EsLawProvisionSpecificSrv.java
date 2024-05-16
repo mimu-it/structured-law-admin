@@ -1,6 +1,5 @@
 package com.ruoyi.web.controller.law.srv.impl;
 
-import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.Page;
 import com.ruoyi.system.service.ISlLawProvisionService;

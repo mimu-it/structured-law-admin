@@ -17,7 +17,7 @@ import javax.annotation.Resource;
  * @date 2024-01-04
  */
 @Service
-public class SlAssociatedFileServiceImpl implements ISlAssociatedFileService 
+public class SlAssociatedFileServiceImpl implements ISlAssociatedFileService
 {
     @Resource
     private SlAssociatedFileMapper slAssociatedFileMapper;
@@ -25,6 +25,11 @@ public class SlAssociatedFileServiceImpl implements ISlAssociatedFileService
     @Override
     public int count() {
         return slAssociatedFileMapper.count();
+    }
+
+    @Override
+    public int count(long lawId) {
+        return slAssociatedFileMapper.count(lawId);
     }
 
     /**

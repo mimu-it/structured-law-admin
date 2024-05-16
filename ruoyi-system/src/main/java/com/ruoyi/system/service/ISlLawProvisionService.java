@@ -20,6 +20,13 @@ public interface ISlLawProvisionService
      */
     int count();
 
+
+    /**
+     * 统计总数
+     * @return
+     */
+    int count(long lawId);
+
     /**
      * 统计有tags的总数
      * @return

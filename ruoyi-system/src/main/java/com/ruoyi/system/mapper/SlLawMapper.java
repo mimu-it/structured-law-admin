@@ -1,6 +1,7 @@
 package com.ruoyi.system.mapper;
 
 import com.ruoyi.system.domain.SlLaw;
+import com.ruoyi.system.domain.SlLawCategory;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -19,6 +20,14 @@ public interface SlLawMapper
      * @return
      */
     int count();
+
+    /**
+     * 用 id 集合一次性获取对应的目录
+     * @param idList
+     * @param columns
+     * @return
+     */
+    List<SlLaw> getByIds(@Param("idList") List<Long> idList, @Param("columns") String[] columns);
 
     /**
      * 获取制定机关选项
@@ -68,6 +77,15 @@ public interface SlLawMapper
      * @return 法律信息集合
      */
     public List<SlLaw> selectSlLawList(SlLaw slLaw);
+
+
+    /**
+     *
+     * @param slLaw
+     * @param columns
+     * @return
+     */
+    List<SlLaw> selectLawList( @Param("slLaw")  SlLaw slLaw,  @Param("columns") String[] columns);
 
     /**
      * 新增法律信息

@@ -1064,6 +1064,11 @@ public class ElasticSearchPortal {
          * 如果要多个字段高亮,这项要为false
          */
         highlight.requireFieldMatch(false);
+        /**
+         * 对一个内容长度比较长的字段进行搜索并使用高亮显示插件时，通过获得结果中的高亮字段获取的内容只有一部分，而非全部内容
+         * 当需要获取全部内容时，只需要设置 number_of_fragments 为0 即可返回完整内容
+         */
+        highlight.numOfFragments(0);
 
         searchSourceBuilder.highlighter(highlight);
         //不返回源数据。只有条数之类的数据。

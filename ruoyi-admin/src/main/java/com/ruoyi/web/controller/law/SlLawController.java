@@ -1,8 +1,11 @@
 package com.ruoyi.web.controller.law;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONConfig;
 import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.Page;
 import com.ruoyi.common.annotation.Log;
@@ -21,10 +24,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.*;
 
 /**
  * 法律信息Controller
@@ -95,6 +100,7 @@ public class SlLawController extends BaseController
     }
 
     /**
+     * 数据量过大会超时
      * 导出法律信息列表
      */
     @PreAuthorize("@ss.hasPermi('structured-law:law:export')")
@@ -105,6 +111,55 @@ public class SlLawController extends BaseController
         List<SlLaw> list = slLawService.selectSlLawList(slLaw);
         ExcelUtil<SlLaw> util = new ExcelUtil<SlLaw>(SlLaw.class);
         util.exportExcel(response, list, "法律信息数据");
+    }
+
+    /**
+     *
+     * @param response
+     * @param slLaw
+     */
+    @PreAuthorize("@ss.hasPermi('structured-law:law:export_existing_law')")
+    @Log(title = "法律信息", businessType = BusinessType.EXPORT)
+    @PostMapping("/export-existing-law")
+    public void exportExistingLaw(HttpServletResponse response, SlLaw slLaw) {
+        List<SlLaw> list = slLawService.selectLawList(slLaw, new String[]{
+                SlLaw.NAME,
+                SlLaw.AUTHORITY,
+                SlLaw.LAW_LEVEL,
+                SlLaw.PUBLISH,
+                SlLaw.STATUS
+        });
+
+        Map<String, String> hashDict = new HashMap<>(list.size());
+        for(SlLaw law : list) {
+            Date publish = law.getPublish();
+            String publishStr = DateUtil.format(publish, "yyyy-MM-dd HH:mm:ss");
+            publishStr = Optional.ofNullable(publishStr).orElse("");
+
+            String name = Optional.ofNullable(law.getName()).orElse("");
+            String lawLevel = Optional.ofNullable(law.getLawLevel()).orElse("");
+            String authority = Optional.ofNullable(law.getAuthority()).orElse("");
+            String status = law.getStatus() == null ? "" : Integer.toString(law.getStatus());
+
+            String key = StrUtil.join(",", name, authority, lawLevel, publishStr, status);
+            hashDict.put(key, status);
+        }
+
+        // 创建JSONConfig，指定日期格式
+        JSONConfig config = new JSONConfig();
+        config.setDateFormat("yyyy-MM-dd HH:mm:ss");
+
+        // 使用JSONUtil.toJSONString方法，传入配置
+        String jsonStr = JSONUtil.toJsonStr(hashDict, config);
+        byte[] bytes = jsonStr.getBytes();
+
+        response.setHeader("Content-Disposition","attachement; fileName=existing_law.json");
+        try(ServletOutputStream outputStream = response.getOutputStream()) {
+            outputStream.write(bytes);
+        } catch (IOException e) {
+            logger.error("", e);
+            throw new IllegalStateException(e);
+        }
     }
 
     /**

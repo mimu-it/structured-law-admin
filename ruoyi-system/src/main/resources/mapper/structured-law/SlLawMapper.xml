@@ -34,6 +34,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select count(*) from sl_law
     </select>
 
+
+    <select id="getByIds" resultMap="SlLawResult">
+        <include refid="select_optional_field"/>
+        where id in
+        <foreach item="id" collection="idList" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <select id="listAuthority" resultMap="SlLawResult">
         select distinct authority, authority_province, authority_city, authority_district from sl_law
         <where>
@@ -98,6 +107,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="documentNo != null  and documentNo != ''"> and document_no = #{documentNo}</if>
             <if test="documentType != null  and documentType != ''"> and document_type = #{documentType}</if>
             <if test="validFrom != null "> and valid_from = #{validFrom}</if>
+        </where>
+    </select>
+
+
+    <select id="selectLawList" parameterType="SlLaw" resultMap="SlLawResult">
+        <include refid="select_optional_field"/>
+        <where>
+            <if test="slLaw.name != null  and slLaw.name != ''"> and name = #{slLaw.name}</if>
+            <if test="slLaw.categoryId != null"> and category_id = #{slLaw.categoryId}</if>
+            <if test="slLaw.lawLevel != null  and slLaw.lawLevel != ''"> and law_level = #{slLaw.lawLevel}</if>
+            <if test="slLaw.authority != null  and slLaw.authority != ''"> and authority = #{slLaw.authority}</if>
+            <if test="slLaw.authorityProvince != null  and slLaw.authorityProvince != ''"> and authority_province = #{slLaw.authorityProvince}</if>
+            <if test="slLaw.authorityCity != null  and slLaw.authorityCity != ''"> and authority_city = #{slLaw.authorityCity}</if>
+            <if test="slLaw.authorityDistrict != null  and slLaw.authorityDistrict != ''"> and authority_district = #{slLaw.authorityDistrict}</if>
+            <if test="slLaw.publish != null "> and publish = #{slLaw.publish}</if>
+            <if test="slLaw.status != null "> and status = #{slLaw.status}</if>
+            <if test="slLaw.subtitle != null  and slLaw.subtitle != ''"> and subtitle = #{slLaw.subtitle}</if>
+            <if test="slLaw.documentNo != null  and slLaw.documentNo != ''"> and document_no = #{slLaw.documentNo}</if>
+            <if test="slLaw.documentType != null  and slLaw.documentType != ''"> and document_type = #{slLaw.documentType}</if>
+            <if test="slLaw.validFrom != null "> and valid_from = #{slLaw.validFrom}</if>
         </where>
     </select>
     

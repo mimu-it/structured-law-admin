@@ -42,7 +42,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="listLawCategory" resultMap="SlLawCategoryResult">
         <include refid="select_optional_field"/>
         <where>
-            <if test="p.name != null  and p.name != ''"> and name like concat('%', #{p.name}, '%')</if>
+            <if test="p.name != null  and p.name != ''"> and name = #{p.name}</if>
             <if test="p.folder != null  and p.folder != ''"> and folder = #{p.folder}</if>
             <if test="p.isSubFolder != null "> and is_sub_folder = #{p.isSubFolder}</if>
             <if test="p.categoryGroup != null  and p.categoryGroup != ''"> and category_group = #{p.categoryGroup}</if>
@@ -71,6 +71,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="getById" parameterType="Long" resultMap="SlLawCategoryResult">
         <include refid="select_optional_field"/>
         where id = #{id}
+    </select>
+
+
+    <select id="getByIds" resultMap="SlLawCategoryResult">
+        <include refid="select_optional_field"/>
+        where id in
+        <foreach item="id" collection="idList" open="(" separator="," close=")">
+            #{id}
+        </foreach>
     </select>
 
         

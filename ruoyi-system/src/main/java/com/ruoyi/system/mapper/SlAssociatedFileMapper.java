@@ -19,6 +19,12 @@ public interface SlAssociatedFileMapper
     int count();
 
     /**
+     * 统计总数
+     * @return
+     */
+    int count(long lawId);
+
+    /**
      * 查询关联文件
      * 
      * @param id 关联文件主键

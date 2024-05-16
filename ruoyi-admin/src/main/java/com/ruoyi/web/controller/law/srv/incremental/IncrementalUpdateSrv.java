@@ -1,9 +1,11 @@
-package com.ruoyi.web.controller.law.srv;
+package com.ruoyi.web.controller.law.srv.incremental;
 
-import com.ruoyi.common.annotation.DataSource;
-import com.ruoyi.common.enums.DataSourceType;
+import cn.hutool.json.JSONUtil;
+import com.ruoyi.common.core.domain.BaseEntity;
+import com.ruoyi.system.domain.SlAssociatedFile;
 import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.domain.SlLawCategory;
+import com.ruoyi.system.domain.SlLawProvision;
 import com.ruoyi.system.service.ISlAssociatedFileService;
 import com.ruoyi.system.service.ISlLawCategoryService;
 import com.ruoyi.system.service.ISlLawProvisionService;
@@ -33,6 +35,9 @@ public class IncrementalUpdateSrv {
     @Autowired
     private ISlLawCategoryService slLawCategoryService;
 
+    @Autowired
+    private IncrementalDataSrv incrementalDataSrv;
+
     /**
      * 必须清空关联数据才能完成删除
      *
@@ -47,56 +52,6 @@ public class IncrementalUpdateSrv {
             }
         }
         return count;
-    }
-
-    /**
-     * @param lawIdList
-     * @return
-     */
-    @DataSource(DataSourceType.SLAVE)
-    public List<SlLaw> getIncrementalLaw(List<Long> lawIdList) {
-        if (lawIdList == null) {
-            return slLawService.selectSlLawList(new SlLaw());
-        }
-
-        return slLawService.getByIds(lawIdList, new String[]{
-                SlLaw.ID,
-                SlLaw.STATUS,
-                SlLaw.VER,
-                SlLaw.PUBLISH,
-                SlLaw.LAW_LEVEL,
-                SlLaw.AUTHORITY,
-                SlLaw.NAME,
-                SlLaw.DOCUMENT_NO,
-                SlLaw.AUTHORITY_DISTRICT,
-                SlLaw.AUTHORITY_CITY,
-                SlLaw.AUTHORITY_PROVINCE,
-                SlLaw.VALID_FROM,
-                SlLaw.CATEGORY_ID,
-                SlLaw.PREFACE,
-                SlLaw.TAGS,
-                SlLaw.SUBTITLE,
-                SlLaw.DOCUMENT_TYPE,
-                SlLaw.LAW_ORDER,
-                SlLaw.FULL_CONTENT,
-                SlLaw.ORIGINAL_ID
-        });
-    }
-
-    /**
-     * 获取目录数据
-     * @param categoryId
-     * @return
-     */
-    @DataSource(DataSourceType.SLAVE)
-    public SlLawCategory getIncrementalLawCategory(long categoryId) {
-        return slLawCategoryService.getById(categoryId, new String[]{
-                SlLawCategory.FOLDER,
-                SlLawCategory.NAME,
-                SlLawCategory.CATEGORY_ORDER,
-                SlLawCategory.CATEGORY_GROUP,
-                SlLawCategory.IS_SUB_FOLDER
-        });
     }
 
     /**
@@ -145,13 +100,78 @@ public class IncrementalUpdateSrv {
         }
     }
 
-
+    /**
+     * 新增数据入库
+     * @param law
+     */
     private void insertLaw(SlLaw law) {
+        long categoryId = this.insertCategory(law.getCategoryId());
+        // 更新为新的 categoryId
+        law.setCategoryId(categoryId);
         int newLawId = slLawService.insertSlLaw(law);
-        this.insertCategory(law.getCategoryId());
+        this.insertProvision(law.getId(), newLawId);
+        this.insertAssociatedFile(law.getId(), newLawId);
     }
 
-    private void insertCategory(long categoryId) {
-        SlLawCategory newSlLawCategory = this.
+    /**
+     * 有必要的话新增Category
+     * @param categoryId
+     * @return
+     */
+    private long insertCategory(long categoryId) {
+        SlLawCategory newSlLawCategory = incrementalDataSrv.getIncrementalLawCategory(categoryId);
+
+        SlLawCategory condition = new SlLawCategory();
+        condition.setName(newSlLawCategory.getName());
+        List<SlLawCategory> categoryList = slLawCategoryService.listLawCategory(condition, new String[]{
+                BaseEntity.ID, SlLawCategory.FOLDER, SlLawCategory.CATEGORY_ORDER, SlLawCategory.NAME,
+                SlLawCategory.IS_SUB_FOLDER, SlLawCategory.CATEGORY_ORDER
+        });
+
+        if(categoryList.isEmpty()) {
+            int count = slLawCategoryService.insertSlLawCategory(newSlLawCategory);
+            if(count != 1) {
+                throw new IllegalStateException("插入数据不成功，数据:" + JSONUtil.toJsonStr(newSlLawCategory));
+            }
+            return newSlLawCategory.getId();
+        }
+
+        if(categoryList.size() > 1) {
+            throw new IllegalStateException("存在多个相同的目录, categoryList: " + JSONUtil.toJsonStr(categoryList));
+        }
+
+        return categoryList.get(0).getId();
+    }
+
+    /**
+     * 因为如果存在law，那么它的条款就不会更新
+     * @param incrementalLawId
+     * @param newLawId
+     */
+    private void insertProvision(long incrementalLawId, long newLawId) {
+        List<SlLawProvision> provisionList = incrementalDataSrv.getIncrementalLawProvision(incrementalLawId);
+        for(SlLawProvision p : provisionList) {
+            p.setLawId(newLawId);
+            int count = slLawProvisionService.insertSlLawProvision(p);
+            if(count != 1) {
+                throw new IllegalStateException("插入数据不成功，数据:" + JSONUtil.toJsonStr(p));
+            }
+        }
+    }
+
+    /**
+     * 因为如果存在law，那么它的关联文件就不会更新
+     * @param incrementalLawId
+     * @param newLawId
+     */
+    private void insertAssociatedFile(long incrementalLawId, long newLawId) {
+        List<SlAssociatedFile> associatedFiles = incrementalDataSrv.getIncrementalAssociatedFile(incrementalLawId);
+        for(SlAssociatedFile p : associatedFiles) {
+            p.setLawId(newLawId);
+            int count = slAssociatedFileService.insertSlAssociatedFile(p);
+            if(count != 1) {
+                throw new IllegalStateException("插入数据不成功，数据:" + JSONUtil.toJsonStr(p));
+            }
+        }
     }
 }

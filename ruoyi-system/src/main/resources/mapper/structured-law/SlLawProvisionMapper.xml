@@ -23,6 +23,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="count" resultType="int">
         select count(*) from sl_law_provision
+        <where>
+            <if test="lawId != null "> and law_id = #{lawId}</if>
+        </where>
     </select>
 
     <select id="countTags" resultType="int">

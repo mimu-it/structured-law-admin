@@ -1,11 +1,10 @@
-package com.baymax.bone.service.legislation.parser.text;
+package com.ruoyi.web.controller.law.processor.controller.text;
 
-import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baymax.bone.service.legislation.core.pojo.LawSearchParams;
-import com.baymax.bone.service.legislation.parser.text.impl.LawNameParser;
-import com.baymax.bone.service.legislation.parser.text.impl.NormalTextParser;
-import com.baymax.bone.service.legislation.parser.text.impl.ProvisionTitleParser;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
+import com.ruoyi.web.controller.law.processor.controller.text.impl.LawNameParser;
+import com.ruoyi.web.controller.law.processor.controller.text.impl.NormalTextParser;
+import com.ruoyi.web.controller.law.processor.controller.text.impl.ProvisionTitleParser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,11 +24,11 @@ public class SearchTextParser {
         parserChain.add(new NormalTextParser());
     }
 
-    public static void parse(String text, LawSearchParams lawSearchParams) {
+    public static void parse(String text, IntegralParams integralParams) {
         if(StrUtil.isNotBlank(text)) {
             String[] wordsArr = text.split("\\s+");
             List<String> words = new ArrayList<>(Arrays.asList(wordsArr));
-            parserChain.forEach((parser) -> parser.parse(words, lawSearchParams));
+            parserChain.forEach((parser) -> parser.parse(words, integralParams));
         }
     }
 }

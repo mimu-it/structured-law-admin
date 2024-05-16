@@ -1,6 +1,7 @@
 package com.ruoyi.system.service;
 
 import com.ruoyi.system.domain.SlLaw;
+import com.ruoyi.system.domain.SlLawCategory;
 
 import java.util.List;
 
@@ -56,6 +57,14 @@ public interface ISlLawService
     SlLaw getById(Long id, String[] columns);
 
     /**
+     * 通过id 集合查
+     * @param idList
+     * @param columns
+     * @return
+     */
+    List<SlLaw> getByIds(List<Long> idList, String[] columns);
+
+    /**
      * 查询法律信息列表
      *
      * @return 法律信息集合
@@ -64,6 +73,14 @@ public interface ISlLawService
 
 
     public List<SlLaw> selectSlLawList(SlLaw slLaw);
+
+    /**
+     * 查询法律信息列表
+     * @param slLaw
+     * @param columns
+     * @return
+     */
+    List<SlLaw> selectLawList(SlLaw slLaw, String[] columns);
 
     /**
      * 新增法律信息

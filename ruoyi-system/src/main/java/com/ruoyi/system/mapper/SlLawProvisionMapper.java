@@ -17,6 +17,13 @@ public interface SlLawProvisionMapper
      */
     int count();
 
+
+    /**
+     * 统计总数
+     * @return
+     */
+    int count(long lawId);
+
     /**
      * 统计tags
      * @return

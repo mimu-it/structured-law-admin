@@ -1,10 +1,13 @@
-package com.baymax.bone.service.legislation.parser.text.impl;
+package com.ruoyi.web.controller.law.processor.controller.text.impl;
 
 import cn.hutool.core.convert.NumberChineseFormatter;
-import com.baymax.bone.service.legislation.core.pojo.LawSearchParams;
-import com.baymax.bone.service.legislation.parser.text.IParser;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
+import com.ruoyi.web.controller.law.processor.controller.text.IParser;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,7 +22,13 @@ public class ProvisionTitleParser implements IParser {
     private static Pattern patternMatchProvisionArabicTitle = Pattern.compile("([\\d]+)条$");
 
     @Override
-    public void parse(List<String> words, LawSearchParams lawSearchParams) {
+    public void parse(List<String> words, IntegralParams integralParams) {
+        String[] termTitleArray = integralParams.getTermTitleArray();
+        if(termTitleArray != null && termTitleArray.length > 0) {
+            /** 如果已经指定了值，就不处理 */
+            return;
+        }
+
         List<String> provisionTitles = new ArrayList<>();
         Set<String> wordMatchSet = new HashSet<>();
 
@@ -33,7 +42,7 @@ public class ProvisionTitleParser implements IParser {
         });
 
         this.cleanWords(words, wordMatchSet);
-        lawSearchParams.setProvisionTitle(provisionTitles);
+        integralParams.setTermTitleArray(provisionTitles.toArray(new String[0]));
     }
 
     /**

@@ -31,6 +31,14 @@ public interface SlLawCategoryMapper
 
 
     /**
+     * 用 id 集合一次性获取对应的目录
+     * @param idList
+     * @param columns
+     * @return
+     */
+    List<SlLawCategory> getByIds(@Param("idList") List<Long> idList, @Param("columns") String[] columns);
+
+    /**
      * 指定列的id查找
      * @param id
      * @param columns

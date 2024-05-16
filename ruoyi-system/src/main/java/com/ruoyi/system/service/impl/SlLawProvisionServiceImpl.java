@@ -26,6 +26,11 @@ public class SlLawProvisionServiceImpl implements ISlLawProvisionService
         return slLawProvisionMapper.count();
     }
 
+    @Override
+    public int count(long lawId) {
+        return slLawProvisionMapper.count(lawId);
+    }
+
     /**
      * 统计有tags的总数
      * @return

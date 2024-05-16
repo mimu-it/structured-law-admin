@@ -1,12 +1,10 @@
-package com.baymax.bone.service.legislation.parser.text.impl;
+package com.ruoyi.web.controller.law.processor.controller.text.impl;
 
-import com.baymax.bone.service.legislation.core.pojo.LawSearchParams;
-import com.baymax.bone.service.legislation.parser.text.IParser;
+import cn.hutool.core.collection.CollectionUtil;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
+import com.ruoyi.web.controller.law.processor.controller.text.IParser;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author xiao.hu
@@ -16,7 +14,7 @@ import java.util.Set;
 public class NormalTextParser implements IParser {
 
     @Override
-    public void parse(List<String> words, LawSearchParams lawSearchParams) {
+    public void parse(List<String> words, IntegralParams integralParams) {
         List<String> keywords = new ArrayList<>();
         Set<String> wordMatchSet = new HashSet<>();
         words.forEach((word) -> {
@@ -25,6 +23,6 @@ public class NormalTextParser implements IParser {
         });
 
         this.cleanWords(words, wordMatchSet);
-        lawSearchParams.setProvisionText(keywords);
+        integralParams.setTermText(CollectionUtil.join(keywords, " "));
     }
 }

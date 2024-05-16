@@ -1,6 +1,6 @@
-package com.baymax.bone.service.legislation.parser.text;
+package com.ruoyi.web.controller.law.processor.controller.text;
 
-import com.baymax.bone.service.legislation.core.pojo.LawSearchParams;
+import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
 
 import java.util.Iterator;
 import java.util.List;
@@ -13,7 +13,12 @@ import java.util.Set;
  */
 public interface IParser {
 
-    void parse(List<String> words, LawSearchParams lawSearchParams);
+    /**
+     * 文法解释
+     * @param words
+     * @param integralParams
+     */
+    void parse(List<String> words, IntegralParams integralParams);
 
 
     /**

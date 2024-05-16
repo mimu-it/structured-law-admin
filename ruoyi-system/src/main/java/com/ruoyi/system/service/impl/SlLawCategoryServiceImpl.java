@@ -1,5 +1,6 @@
 package com.ruoyi.system.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,20 @@ public class SlLawCategoryServiceImpl implements ISlLawCategoryService
     @Override
     public SlLawCategory getById(Long id, String[] columns) {
         return slLawCategoryMapper.getById(id, columns);
+    }
+
+    /**
+     *
+     * @param idList
+     * @param columns
+     * @return
+     */
+    @Override
+    public List<SlLawCategory> getByIds(List<Long> idList, String[] columns) {
+        if(idList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return slLawCategoryMapper.getByIds(idList, columns);
     }
 
     /**

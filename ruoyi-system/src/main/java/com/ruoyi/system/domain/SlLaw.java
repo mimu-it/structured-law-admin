@@ -1,7 +1,6 @@
 package com.ruoyi.system.domain;
 
 import java.util.Date;
-import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -22,6 +21,8 @@ public class SlLaw extends BaseEntity
     /** $column.columnComment */
     @Excel(name = "id", readConverterExp = "$column.readConverterExp()")
     private Long id;
+
+    private Long originalId;
 
     /** 目录id */
     @Excel(name = "目录id")
@@ -101,7 +102,15 @@ public class SlLaw extends BaseEntity
         return id;
     }
 
-    public void setCategoryId(Long categoryId) 
+    public Long getOriginalId() {
+        return originalId;
+    }
+
+    public void setOriginalId(Long originalId) {
+        this.originalId = originalId;
+    }
+
+    public void setCategoryId(Long categoryId)
     {
         this.categoryId = categoryId;
     }
@@ -260,6 +269,7 @@ public class SlLaw extends BaseEntity
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("id", getId())
+                .append("originalId", getOriginalId())
             .append("categoryId", getCategoryId())
             .append("name", getName())
             .append("lawLevel", getLawLevel())
@@ -282,6 +292,7 @@ public class SlLaw extends BaseEntity
     }
 
     public static final String ID = "id";
+    public static final String ORIGINAL_ID = "original_id";
     public static final String CATEGORY_ID = "category_id";
     public static final String NAME = "name";
     public static final String LAW_LEVEL = "law_level";
@@ -303,6 +314,7 @@ public class SlLaw extends BaseEntity
 
 
     public static final String C__ID = "id";
+    public static final String C__ORIGINAL_ID = "originalId";
     public static final String C__CATEGORY_ID = "categoryId";
     public static final String C__NAME = "name";
     public static final String C__LAW_TYPE = "lawType";

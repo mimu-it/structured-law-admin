@@ -34,6 +34,15 @@ public interface ISlLawCategoryService
      */
     SlLawCategory getById(Long id, String[] columns);
 
+
+    /**
+     * 通过id 集合查
+     * @param idList
+     * @param columns
+     * @return
+     */
+    List<SlLawCategory> getByIds(List<Long> idList, String[] columns);
+
     /**
      * 查询法库目录列表
      * 

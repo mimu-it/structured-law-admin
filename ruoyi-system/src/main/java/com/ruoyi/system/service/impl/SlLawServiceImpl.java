@@ -1,11 +1,11 @@
 package com.ruoyi.system.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.ruoyi.system.domain.SlLaw;
 import com.ruoyi.system.mapper.SlLawMapper;
 import com.ruoyi.system.service.ISlLawService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -72,6 +72,20 @@ public class SlLawServiceImpl implements ISlLawService
     }
 
     /**
+     *
+     * @param idList
+     * @param columns
+     * @return
+     */
+    @Override
+    public List<SlLaw> getByIds(List<Long> idList, String[] columns) {
+        if(idList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return slLawMapper.getByIds(idList, columns);
+    }
+
+    /**
      * 查询法律信息列表
      *
      * @return 法律信息
@@ -91,6 +105,17 @@ public class SlLawServiceImpl implements ISlLawService
     public List<SlLaw> selectSlLawList(SlLaw slLaw)
     {
         return slLawMapper.selectSlLawList(slLaw);
+    }
+
+    /**
+     *
+     * @param slLaw
+     * @param columns
+     * @return
+     */
+    @Override
+    public List<SlLaw> selectLawList(SlLaw slLaw, String[] columns) {
+        return slLawMapper.selectLawList(slLaw, columns);
     }
 
     /**

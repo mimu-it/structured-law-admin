@@ -1,9 +1,5 @@
 package com.ruoyi.system.domain;
 
-import java.util.Date;
-import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
@@ -20,7 +16,7 @@ public class SlLawCategory extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     /** $column.columnComment */
-    private String id;
+    private Long id;
 
     /** 目录名称 */
     @Excel(name = "目录名称")
@@ -42,17 +38,15 @@ public class SlLawCategory extends BaseEntity
     @Excel(name = "排序序号")
     private Integer categoryOrder;
 
-    public void setId(String id) 
-    {
-        this.id = id;
-    }
-
-    public String getId() 
-    {
+    public Long getId() {
         return id;
     }
 
-    public void setName(String name) 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setName(String name)
     {
         this.name = name;
     }
