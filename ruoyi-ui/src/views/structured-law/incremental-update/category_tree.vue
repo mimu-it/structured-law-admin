@@ -2,7 +2,7 @@
     <el-tree :data="treeList" :props="defaultProps" @node-click="nodeClick"></el-tree>
 </template>
 <script>
-    import {listAllCategory} from "@/api/structured-law/category";
+    import {listAllCategory} from "@/api/structured-law/incremental-update";
 
     export default {
         name: 'CategoryTree',

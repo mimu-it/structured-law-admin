@@ -48,17 +48,6 @@
                 <el-row :gutter="10" class="mb8">
                     <el-col :span="1.5">
                         <el-button
-                            type="primary"
-                            plain
-                            icon="el-icon-plus"
-                            size="mini"
-                            @click="handleAdd"
-                            v-hasPermi="['structured-law:law:add']"
-                        >新增
-                        </el-button>
-                    </el-col>
-                    <el-col :span="1.5">
-                        <el-button
                             type="success"
                             plain
                             icon="el-icon-edit"
@@ -83,13 +72,12 @@
                     </el-col>
                     <el-col :span="1.5">
                         <el-button
-                            type="warning"
                             plain
-                            icon="el-icon-download"
+                            icon="el-icon-coin"
                             size="mini"
-                            @click="handleExport"
-                            v-hasPermi="['structured-law:law:export_existing_law']"
-                        >导出现有法律清单
+                            @click="merge"
+                            v-hasPermi="['structured-law:law:merge']"
+                        >合并增量数据入库
                         </el-button>
                     </el-col>
                     <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
@@ -124,7 +112,7 @@
                     <el-table-column label="法律名称" align="left" prop="name" fixed width="260">
                         <template slot-scope="scope">
                             <router-link
-                                :to="{path:'/law-mgr/provision', query:{lawId: scope.row.id, lawName: scope.row.name}}"
+                                :to="{path:'/law-mgr/provision-incremental', query:{lawId: scope.row.id, lawName: scope.row.name}}"
                                 class="link-type">
                                 <span>{{ scope.row.name }}</span>
                             </router-link>
@@ -246,12 +234,13 @@
 </template>
 
 <script>
-    import {addLaw, delLaw, getLaw, listLaw, updateLaw} from "@/api/structured-law/law";
-    import CategoryTree from "@/views/structured-law/category/category_tree.vue";
+    import {addLaw, delLaw, getLaw, listLaw, updateLaw} from "@/api/structured-law/incremental-update";
+    import CategoryTree from "@/views/structured-law/incremental-update/category_tree.vue";
     import Util from "@/utils/util";
     import TreeSelect from "@/components/Xiao/TreeSelect.vue";
     import {makeTree2} from "@/utils/tree-maker";
-    import {listAllCategory} from "@/api/structured-law/category";
+    import {listAllCategory, merge} from "@/api/structured-law/incremental-update";
+
 
     export default {
         name: "Law",
@@ -298,15 +287,12 @@
                     ],
                     name: [
                         {required: true, message: "法律名称不能为空", trigger: "blur"}
-                    ],
-                    lawLevel: [
-                        {required: true, message: "类型,对标level不能为空", trigger: "change"}
-                    ],
+                    ]
                 },
                 props: {
                     // 配置项（必选）
                     value: "id",
-                    label: "name",
+                    label: "folder",
                     children: "children"
                     // disabled:true
                 },
@@ -383,15 +369,6 @@
                 this.single = selection.length !== 1
                 this.multiple = !selection.length
             },
-            /** 新增按钮操作 */
-            handleAdd() {
-                this.reset();
-                this.title = "添加法律信息";
-
-                this.getCategory().then(() => {
-                    this.open = true;
-                });
-            },
             /** 修改按钮操作 */
             handleUpdate(row) {
                 this.reset();
@@ -433,7 +410,8 @@
                 }).then(() => {
                     this.getList();
                     this.$modal.msgSuccess("删除成功");
-                }).catch(() => {
+                }).catch((err) => {
+                    this.$modal.msgError(err);
                 });
             },
             /** 导出按钮操作 */
@@ -441,6 +419,17 @@
                 this.download('structured-law/law/export-existing-law', {
                     ...this.queryParams
                 }, `existing_law.json`)
+            },
+            /**
+             * 合并增量数据入库
+             */
+            merge(row) {
+                const ids = row.id || this.ids;
+                merge(ids).then(response => {
+                    this.$modal.msgSuccess("合并成功");
+                }).catch((err) => {
+                    this.$modal.msgError(err);
+                });
             },
             handleNodeClick(data) {
                 console.log(data);
@@ -462,6 +451,7 @@
                 return new Promise((resolve, reject) => {
                     listAllCategory(this.queryParams).then(response => {
                         this.optionOfCategory = makeTree2(response.data);
+                        console.log("this.optionOfCategory => " + this.optionOfCategory)
                         resolve(response);
                     }).catch((err) => {
                         reject(err);

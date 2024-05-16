@@ -1,7 +1,6 @@
 <template>
     <div class="app-container">
-        <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch"
-                 label-width="68px">
+        <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
             <el-form-item label="所属法律" prop="title">
                 <TableViewPicker v-model="queryParams.lawId" :searchItems="customerSearchFields"
                                  :defaultLabel="lawName"
@@ -35,8 +34,7 @@
                     size="mini"
                     @click="handleAdd"
                     v-hasPermi="['structured-law:provision:add']"
-                >新增
-                </el-button>
+                >新增</el-button>
             </el-col>
             <el-col :span="1.5">
                 <el-button
@@ -47,8 +45,7 @@
                     :disabled="single"
                     @click="handleUpdate"
                     v-hasPermi="['structured-law:provision:edit']"
-                >修改
-                </el-button>
+                >修改</el-button>
             </el-col>
             <el-col :span="1.5">
                 <el-button
@@ -59,61 +56,7 @@
                     :disabled="multiple"
                     @click="handleDelete"
                     v-hasPermi="['structured-law:provision:remove']"
-                >删除
-                </el-button>
-            </el-col>
-            <el-col :span="1.5">
-                <el-button
-                    type="warning"
-                    plain
-                    icon="el-icon-download"
-                    size="mini"
-                    @click="handleExport"
-                    v-hasPermi="['structured-law:provision:export']"
-                >导出
-                </el-button>
-            </el-col>
-            <el-col :span="1.5">
-                <el-button
-                    type="success"
-                    plain
-                    icon="el-icon-folder-checked"
-                    size="mini"
-                    @click="buildIndex"
-                    v-hasPermi="['structured-law:provision:build_index']"
-                >建立倒排索引
-                </el-button>
-            </el-col>
-            <el-col :span="1.5">
-                <el-button
-                    type="danger"
-                    plain
-                    icon="el-icon-folder-delete"
-                    size="mini"
-                    @click="deleteIndex"
-                    v-hasPermi="['structured-law:provision:delete_index']"
-                >删除索引
-                </el-button>
-            </el-col>
-            <el-col :span="1.5">
-                <el-button
-                    plain
-                    icon="el-icon-coin"
-                    size="mini"
-                    @click="backup"
-                    v-hasPermi="['structured-law:provision:backup']"
-                >备份数据库
-                </el-button>
-            </el-col>
-            <el-col :span="1.5">
-                <el-button
-                    plain
-                    icon="el-icon-copy-document"
-                    size="mini"
-                    @click="sync"
-                    v-hasPermi="['structured-law:provision:sync']"
-                >同步爬虫库
-                </el-button>
+                >删除</el-button>
             </el-col>
             <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -135,8 +78,8 @@
             <el-table-column label="条款标题" align="left" prop="title" width="200"/>
             <el-table-column label="条款数字标题" align="left" prop="titleNumber" width="100"/>
             <el-table-column label="标签" align="left" prop="tags" width="100"/>
-            <el-table-column label="条款正文" align="left" prop="termText"/>
-            <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="200">
+            <el-table-column label="条款正文" align="left" prop="termText" />
+            <el-table-column label="操作" align="center" class-name="small-padding fixed-width"  width="200">
                 <template slot-scope="scope">
                     <el-button
                         size="mini"
@@ -144,16 +87,14 @@
                         icon="el-icon-edit"
                         @click="handleUpdate(scope.row)"
                         v-hasPermi="['structured-law:provision:edit']"
-                    >修改
-                    </el-button>
+                    >修改</el-button>
                     <el-button
                         size="mini"
                         type="text"
                         icon="el-icon-delete"
                         @click="handleDelete(scope.row)"
                         v-hasPermi="['structured-law:provision:remove']"
-                    >删除
-                    </el-button>
+                    >删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -170,10 +111,10 @@
         <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
             <el-form ref="form" :model="form" :rules="rules" label-width="80px">
                 <el-form-item label="条款标题" prop="title">
-                    <el-input v-model="form.title" placeholder="请输入条款标题"/>
+                    <el-input v-model="form.title" placeholder="请输入条款标题" />
                 </el-form-item>
                 <el-form-item label="条款数字标题" prop="title">
-                    <el-input v-model="form.titleNumber" placeholder="请输入条款数字标题"/>
+                    <el-input v-model="form.titleNumber" placeholder="请输入条款数字标题" />
                 </el-form-item>
                 <el-form-item label="标签">
                     <el-input type="textarea" v-model="form.tags"></el-input>
@@ -191,21 +132,12 @@
 </template>
 
 <script>
-    import {
-        addProvision,
-        backup,
-        buildElasticSearchIndex,
-        deleteElasticSearchIndex,
-        delProvision,
-        getProvision,
-        listProvision,
-        updateProvision
-    } from "@/api/structured-law/provision";
+    import { listProvision, getProvision, delProvision, addProvision, updateProvision} from "@/api/structured-law/incremental-update";
     import TableViewPicker from "@/components/Xiao/TableViewPicker";
     import Util from '@/utils/util';
 
     export default {
-        name: "Provision",
+        name: "ProvisionIncremental",
         components: {
             TableViewPicker
         },
@@ -241,16 +173,16 @@
                 // 表单校验
                 rules: {
                     lawId: [
-                        {required: true, message: "所属法律不能为空", trigger: "blur"}
+                        { required: true, message: "所属法律不能为空", trigger: "blur" }
                     ],
                     title: [
-                        {required: true, message: "条款标题不能为空", trigger: "blur"}
+                        { required: true, message: "条款标题不能为空", trigger: "blur" }
                     ],
                     titleNumber: [
-                        {required: true, message: "条款数字标题不能为空", trigger: "blur"}
+                        { required: true, message: "条款数字标题不能为空", trigger: "blur" }
                     ],
                     termText: [
-                        {required: true, message: "条款正文不能为空", trigger: "blur"}
+                        { required: true, message: "条款正文不能为空", trigger: "blur" }
                     ]
                 },
                 lawName: "",
@@ -263,12 +195,12 @@
         created() {
             this.getList();
         },
-        activated() {
+        activated(){
             this.$nextTick(() => {
                 //console.log('代码中获取路由参数：', this.$route.query.lawId)
                 let lawId = this.$route.query.lawId;
                 let lawName = this.$route.query.lawName;
-                if (Util.isBlank(lawId) || Util.isBlank(lawName)) {
+                if(Util.isBlank(lawId) || Util.isBlank(lawName)) {
                     return
                 }
 
@@ -323,7 +255,7 @@
             // 多选框选中数据
             handleSelectionChange(selection) {
                 this.ids = selection.map(item => item.id)
-                this.single = selection.length !== 1
+                this.single = selection.length!==1
                 this.multiple = !selection.length
             },
             /** 新增按钮操作 */
@@ -365,13 +297,12 @@
             /** 删除按钮操作 */
             handleDelete(row) {
                 const ids = row.id || this.ids;
-                this.$modal.confirm('是否确认删除法律条款编号为"' + ids + '"的数据项？').then(function () {
+                this.$modal.confirm('是否确认删除法律条款编号为"' + ids + '"的数据项？').then(function() {
                     return delProvision(ids);
                 }).then(() => {
                     this.getList();
                     this.$modal.msgSuccess("删除成功");
-                }).catch(() => {
-                });
+                }).catch(() => {});
             },
             /** 导出按钮操作 */
             handleExport() {
@@ -384,8 +315,7 @@
                 buildElasticSearchIndex().then(response => {
                     this.$alert('索引建立正在异步进行...', '提示', {
                         confirmButtonText: '确定',
-                        callback: action => {
-                        }
+                        callback: action => {}
                     });
                 });
             },
@@ -394,8 +324,7 @@
                     this.$alert('索引删除成功', '提示', {
                         confirmButtonText: '确定',
                         type: 'success',
-                        callback: action => {
-                        }
+                        callback: action => {}
                     });
                 }).catch((err) => {
                     console.error(err);
@@ -406,8 +335,7 @@
                     this.$alert('备份成功', '提示', {
                         confirmButtonText: '确定',
                         type: 'success',
-                        callback: action => {
-                        }
+                        callback: action => {}
                     });
                 });
             },
