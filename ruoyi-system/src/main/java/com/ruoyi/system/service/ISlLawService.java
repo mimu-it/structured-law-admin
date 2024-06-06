@@ -82,6 +82,9 @@ public interface ISlLawService
      */
     List<SlLaw> selectLawList(SlLaw slLaw, String[] columns);
 
+
+    List<SlLaw> selectLawListForIncrementalUpdate(SlLaw slLaw, String[] columns);
+
     /**
      * 新增法律信息
      * 

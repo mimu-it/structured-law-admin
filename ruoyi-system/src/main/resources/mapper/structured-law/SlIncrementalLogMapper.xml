@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.SlIncrementalLogMapper">
+    
+    <resultMap type="SlIncrementalLog" id="SlIncrementalLogResult">
+        <result property="id"    column="id"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="logContent"    column="log_content"    />
+    </resultMap>
+
+    <sql id="selectSlIncrementalLogVo">
+        select id, create_by, create_time, update_by, update_time, log_content from sl_incremental_log
+    </sql>
+
+    <select id="selectSlIncrementalLogList" parameterType="SlIncrementalLog" resultMap="SlIncrementalLogResult">
+        <include refid="selectSlIncrementalLogVo"/>
+        <where>  
+            <if test="id != null  and id != ''"> and id = #{id}</if>
+            <if test="createBy != null  and createBy != ''"> and create_by = #{createBy}</if>
+            <if test="createTime != null "> and create_time = #{createTime}</if>
+            <if test="updateBy != null  and updateBy != ''"> and update_by = #{updateBy}</if>
+            <if test="updateTime != null "> and update_time = #{updateTime}</if>
+            <if test="logContent != null  and logContent != ''"> and log_content = #{logContent}</if>
+        </where>
+    </select>
+    
+    <select id="selectSlIncrementalLogById" parameterType="String" resultMap="SlIncrementalLogResult">
+        <include refid="selectSlIncrementalLogVo"/>
+        where id = #{id}
+    </select>
+        
+    <insert id="insertSlIncrementalLog" parameterType="SlIncrementalLog" useGeneratedKeys="true" keyProperty="id">
+        insert into sl_incremental_log
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="logContent != null and logContent != ''">log_content,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="logContent != null and logContent != ''">#{logContent},</if>
+         </trim>
+    </insert>
+
+    <update id="updateSlIncrementalLog" parameterType="SlIncrementalLog">
+        update sl_incremental_log
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="logContent != null and logContent != ''">log_content = #{logContent},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteSlIncrementalLogById" parameterType="String">
+        delete from sl_incremental_log where id = #{id}
+    </delete>
+
+    <delete id="deleteSlIncrementalLogByIds" parameterType="String">
+        delete from sl_incremental_log where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

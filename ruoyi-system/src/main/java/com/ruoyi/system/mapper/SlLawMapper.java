@@ -87,8 +87,20 @@ public interface SlLawMapper
      */
     List<SlLaw> selectLawList( @Param("slLaw")  SlLaw slLaw,  @Param("columns") String[] columns);
 
+
+    /**
+     *
+     * @param slLaw
+     * @param columns
+     * @return
+     */
+    List<SlLaw> selectLawListForIncrementalUpdate( @Param("slLaw")  SlLaw slLaw,  @Param("columns") String[] columns);
+
     /**
      * 新增法律信息
+     *
+     * 当你调用insertUser方法时，MyBatis会执行INSERT语句，并且由于设置了useGeneratedKeys为true和keyProperty为id，
+     * MyBatis会将生成的主键值赋给传入的User对象的id属性。insert方法返回值类型为int，代表此次操作影响的行数
      * 
      * @param slLaw 法律信息
      * @return 结果

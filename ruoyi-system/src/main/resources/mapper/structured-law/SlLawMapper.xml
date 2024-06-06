@@ -129,6 +129,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="slLaw.validFrom != null "> and valid_from = #{slLaw.validFrom}</if>
         </where>
     </select>
+
+    <select id="selectLawListForIncrementalUpdate" parameterType="SlLaw" resultMap="SlLawResult">
+        <include refid="select_optional_field"/>
+        <where>
+            and name = #{slLaw.name}
+            and law_level = #{slLaw.lawLevel}
+            and authority = #{slLaw.authority}
+            and publish = #{slLaw.publish}
+        </where>
+    </select>
+
     
     <select id="selectSlLawById" parameterType="Long" resultMap="SlLawResult">
         <include refid="selectSlLawVo"/>

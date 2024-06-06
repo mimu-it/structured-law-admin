@@ -118,6 +118,11 @@ public class SlLawServiceImpl implements ISlLawService
         return slLawMapper.selectLawList(slLaw, columns);
     }
 
+    @Override
+    public List<SlLaw> selectLawListForIncrementalUpdate(SlLaw slLaw, String[] columns) {
+        return slLawMapper.selectLawListForIncrementalUpdate(slLaw, columns);
+    }
+
     /**
      * 新增法律信息
      * 

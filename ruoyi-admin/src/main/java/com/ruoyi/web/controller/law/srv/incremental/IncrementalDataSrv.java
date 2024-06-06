@@ -36,6 +36,7 @@ public class IncrementalDataSrv {
     private ISlLawCategoryService slLawCategoryService;
 
     /**
+     * 如果DataSourceType.SLAVE 没有配置，会自动切回访问主库
      * @param lawIdList
      * @return
      */

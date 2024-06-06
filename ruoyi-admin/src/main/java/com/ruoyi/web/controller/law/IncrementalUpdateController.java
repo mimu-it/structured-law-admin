@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.law;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.Page;
 import com.ruoyi.common.annotation.DataSource;
@@ -21,13 +22,17 @@ import com.ruoyi.system.service.ISlLawService;
 import com.ruoyi.web.controller.law.srv.incremental.IncrementalDataSrv;
 import com.ruoyi.web.controller.law.srv.incremental.IncrementalUpdateSrv;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author xiao.hu
@@ -56,6 +61,11 @@ public class IncrementalUpdateController extends BaseController {
     @Autowired
     private IncrementalDataSrv incrementalDataSrv;
 
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String LOCK_ID_FOR_MERGE = "redis_lock_for_merge";
+
     /**
      * 合并增量数据到主库
      * @param lawIds
@@ -64,9 +74,23 @@ public class IncrementalUpdateController extends BaseController {
     @PreAuthorize("@ss.hasPermi('structured-law:incremental_update:merge')")
     @PutMapping(value = {"/merge/{lawIds}", "/merge"})
     public AjaxResult merge(@PathVariable(value = "lawIds", required = false) List<Long> lawIds) {
-        List<SlLaw> lawList = incrementalDataSrv.getIncrementalLaw(lawIds);
-        incrementalUpdateSrv.merge(lawList);
-        return toAjax(true);
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(LOCK_ID_FOR_MERGE, "lock",
+                20 * 60 * 1000, TimeUnit.MILLISECONDS);
+        if (success == null || !success) {
+            /**
+             * 异步进行，这段提示并不显示
+             * 打开 redis-cli  执行 keys * 可看到锁
+             */
+            return success("合并增量数据到主库正在进行...");
+        }
+
+        try {
+            List<SlLaw> lawList = incrementalDataSrv.getIncrementalLaw(lawIds);
+            incrementalUpdateSrv.merge(lawList);
+            return toAjax(true);
+        } finally {
+            redisTemplate.delete(LOCK_ID_FOR_MERGE);
+        }
     }
 
 

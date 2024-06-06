@@ -527,14 +527,14 @@ public class PortalController extends BaseController {
         /**
          * 如果是直接查询罪名，就直接去找罪名条款
          */
-        String charges = ParamProcessor.existsCharges(contentText);
+        /*String charges = ParamProcessor.existsCharges(contentText);
         if (StrUtil.isNotBlank(charges)) {
-            /* 优先查罪名 */
+            // 优先查罪名
             R<LawSearchHitsGroup> respResult = lookForCharges(pageNum, pageSize, sortField, sortType, charges);
             if (respResult.getData().getLaw().size() > 0) {
                 return respResult;
             }
-        }
+        }*/
 
         /**
          * 兼容高级搜索的查询条件
