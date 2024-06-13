@@ -59,6 +59,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
+import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
@@ -733,6 +734,9 @@ public class ElasticSearchPortal {
         searchSourceBuilder.from(from);
         searchSourceBuilder.size(pageSize);
 
+        // 根据得分降序排序
+        searchSourceBuilder.sort(SortBuilders.scoreSort().order(SortOrder.DESC));
+
         /**
          * 设置排序
          */
@@ -786,12 +790,33 @@ public class ElasticSearchPortal {
             sortType = false;
         }
 
+        /**
+         * 统计某个字段的数量
+         * AggregationBuilders.count("count_uid").field("uid");
+         *
+         * 去重统计某个字段的数量（有少量误差）
+         * CardinalityBuilder cb = AggregationBuilders.cardinality("distinct_count_uid").field("uid");
+         *
+         * 求最大值
+         * MaxBuilder mb= AggregationBuilders.max("max_price").field("price");
+         *
+         * 求最小值
+         * MinBuilder min= AggregationBuilders.min("min_price").field("price");
+         *
+         */
         TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(aggregationTermsName).field(IntegralFields.LAW_ID)
                 //告诉引擎我需要按名称为 aggregationOfCountMatch 的方案排序， subAggregation 介绍了aggregationOfCountMatch的排序是如何定义的
-                .order(BucketOrder.aggregation(aggregationOfCountMatch, sortType))
+                //.order(BucketOrder.aggregation(aggregationOfCountMatch, sortType))
+                .order(BucketOrder.compound( // in order of priority:
+                        BucketOrder.aggregation(aggregationOfCountMatch, false), // sort by sub-aggregation first
+                        BucketOrder.aggregation("publish_sort", false))
+                )
                 .subAggregation(
                         //AggregationBuilders.count(aggregationOfCountMatch).field(IntegralFields.LAW_NAME + ".keyword")
-                        AggregationBuilders.min(aggregationOfCountMatch).field(sortField)
+                        AggregationBuilders.count(aggregationOfCountMatch).field(sortField)
+                        //不能按发布时间排序AggregationBuilders.max(aggregationOfCountMatch).field(sortField)
+                ).subAggregation(
+                        AggregationBuilders.max("publish_sort").field(IntegralFields.PUBLISH)
                 ).size(3);
 
         //添加聚合
@@ -808,6 +833,9 @@ public class ElasticSearchPortal {
          */
         searchSourceBuilder.from(0);
         searchSourceBuilder.size(0);
+
+        // 根据得分降序排序
+        searchSourceBuilder.sort(SortBuilders.scoreSort().order(SortOrder.DESC));
 
         if (StrUtil.isNotBlank(sortField)) {
             /**
@@ -840,9 +868,11 @@ public class ElasticSearchPortal {
             /**
              * 从分组中再分别查询对应法律的条目内容
              */
+            logger.debug("================ Aggregation ==================");
             for (Terms.Bucket bucket : groupAggregation.getBuckets()) {
                 // 分组的键
                 String lawIdStr = bucket.getKeyAsString();
+                logger.debug("lawIdStr:" + lawIdStr);
                 // 分组中的文档数量
                 long docCount = bucket.getDocCount();
                 // 处理分组结果
@@ -853,6 +883,7 @@ public class ElasticSearchPortal {
                 from = from <= 0 ? 0 : from * pageSize;
                 searchSourceBuilder.from(from);
                 searchSourceBuilder.size(pageSize);
+
 
                 /** 复制一个 searchSourceBuilder， 并获取它的查询条件 */
                 SearchSourceBuilder clonedBuilder = cloneSearchSourceBuilder(searchSourceBuilder);
@@ -1060,10 +1091,11 @@ public class ElasticSearchPortal {
         highlight.postTags("</span>");
 
         /**
-         * 确保所有字段都匹配
-         * 如果要多个字段高亮,这项要为false
+         * 我们希望搜索title字段时，除了title字段中匹配关键字高亮，摘要abstract字段对应的关键字也要高亮，这需要对require_field_match属性进行设置。
+         * 默认情况下，只有包含查询匹配的字段才会突出显示，因为默认require_field_match值为true，可以设置为false以突出显示所有字段。
+         * title和abstract字段高亮
          */
-        highlight.requireFieldMatch(false);
+        highlight.requireFieldMatch(true);
         /**
          * 对一个内容长度比较长的字段进行搜索并使用高亮显示插件时，通过获得结果中的高亮字段获取的内容只有一部分，而非全部内容
          * 当需要获取全部内容时，只需要设置 number_of_fragments 为0 即可返回完整内容
@@ -1710,17 +1742,24 @@ public class ElasticSearchPortal {
 
     /**
      * 从查询出来的法律中每个条目对应的历史, 批量操作
+     * 特别注意：
+     * 如果不带法律状态条件，将可能查出多条同名法律，以至于这个历史返回的值是一样的
+     *
      * @param hitsList
      * @return
      */
     public List<LawWithProvisionsMatched> makeLawWithProvisionsMatchedByBat(List<IntegralFields> hitsList, BoolQueryBuilder searchQueryForHistory) {
         /** 使用set的原因是可能同一个法律可能命中多次，不能使用同样参数反复查询 */
+        Map<String, IntegralFields> itemOfHighlightMap = new HashMap<>(hitsList.size());
         Set<LawProvision> lawProvisionList = new HashSet<>();
         for(IntegralFields fields : hitsList) {
             LawProvision lawProvision = new LawProvision();
             lawProvision.setLawName(fields.getLawNameOrigin());
             lawProvision.setTermTitle(fields.getTitleOrigin());
             lawProvisionList.add(lawProvision);
+
+            // 为了查历史的时候，让经过高亮定位的数据显示到前端
+            itemOfHighlightMap.put(fields.getEsDocId(), fields);
         }
 
         Map<Long, LawWithProvisionsMatched> map = new HashMap<>();
@@ -1732,6 +1771,11 @@ public class ElasticSearchPortal {
 
         if(!matchHistoryList.isEmpty()) {
             for(IntegralFields lawProvision : matchHistoryList) {
+                IntegralFields itemOfHighlight = itemOfHighlightMap.get(lawProvision.getEsDocId());
+                if(itemOfHighlight != null) {
+                    BeanUtil.copyProperties(itemOfHighlight, lawProvision);
+                }
+
                 /** 开始分类 */
                 LawWithProvisionsMatched lawWithProvisionsMatched = map.get(lawProvision.getLawId());
                 if(lawWithProvisionsMatched == null) {

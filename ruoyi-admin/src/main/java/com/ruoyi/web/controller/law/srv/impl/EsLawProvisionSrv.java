@@ -10,6 +10,7 @@ import com.ruoyi.web.controller.elasticsearch.domain.IntegralParams;
 import com.ruoyi.web.controller.law.srv.AbstractEsSrv;
 import com.ruoyi.web.controller.law.srv.PortalSrv;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -116,8 +118,20 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
         String lawName = integralParams.getLawName();
         if (StrUtil.isNotBlank(lawName)) {
             /** 对于输入"婚姻 罪"，这样的词语应该进行分词，不适用于 matchPhraseQuery*/
-            shouldQuery.should(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawName));
+            shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
         }
+
+        List<String> bestFields = new ArrayList<>();
+        if(StrUtil.isBlank(lawName)) {
+            bestFields.add(IntegralFields.LAW_NAME);
+        }
+
+        if(ArrayUtil.isEmpty(integralParams.getTermTitleArray())) {
+            bestFields.add(IntegralFields.TITLE);
+        }
+
+        bestFields.add(IntegralFields.TERM_TEXT);
+
 
         /** 分词查询 termText */
         String termText = integralParams.getTermText();
@@ -130,23 +144,30 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
                 /** 拆分输入，遇到空格拆分多个关键字用于匹配 */
                 String[] preciseKeywords = termTextPured.split("\\s+");
 
-                BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
-                mustQuery.must(QueryBuilders.matchQuery(IntegralFields.LAW_NAME, lawNameText));
                 for(String preciseKeyword : preciseKeywords) {
-                    mustQuery.must(QueryBuilders.matchPhraseQuery(IntegralFields.TERM_TEXT, preciseKeyword));
+                    /** 正文可能很长，所以使用纯分词 */
+                    shouldQuery.should(QueryBuilders.multiMatchQuery(preciseKeyword, bestFields.toArray(new String[0]))
+                            /**
+                             * 设置法律名权重更高，注意需要配合搜索降序排
+                             * searchSourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC)); // 根据得分降序排序
+                             */
+                            .field(StrUtil.toUnderlineCase(IntegralFields.LAW_NAME), 3f)
+                            .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
                 }
-
-                shouldQuery.should(mustQuery);
             }
             else {
                 /** 拆分输入，遇到空格拆分多个关键字用于匹配 */
                 String[] preciseKeywords = termText.split("\\s+");
-                BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
                 for(String preciseKeyword : preciseKeywords) {
-                    mustQuery.must(QueryBuilders.matchPhraseQuery(IntegralFields.TERM_TEXT, preciseKeyword));
+                    /** 正文可能很长，所以使用纯分词 */
+                    shouldQuery.should(QueryBuilders.multiMatchQuery(preciseKeyword, bestFields.toArray(new String[0]))
+                            /**
+                             * 设置法律名权重更高，注意需要配合搜索降序排
+                             * searchSourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC)); // 根据得分降序排序
+                             */
+                            .field(StrUtil.toUnderlineCase(IntegralFields.LAW_NAME), 3f)
+                            .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
                 }
-
-                shouldQuery.should(mustQuery);
             }
         }
         return shouldQuery;
