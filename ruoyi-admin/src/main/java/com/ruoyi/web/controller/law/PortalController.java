@@ -476,6 +476,9 @@ public class PortalController extends BaseController {
      * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&content_text=婚姻&authority=["全国人民代表大会常务委员会"]
      * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&law_level=["地方性法规"]&status=[9]
      *
+     * 比如查询"刑事 诉讼"，注意带上状态，这样不会引发失效的诉讼匹配记录多于"刑事"，而排到前面
+     * http://localhost:8080/structured-law/portal/group/search-law?page_num=1&content_text=刑事%20诉讼&law_level=["法律"]&status=["1"]
+     *
      * @param pageNum
      * @param pageSize
      * @param lawLevelArrayStr

@@ -803,17 +803,24 @@ public class ElasticSearchPortal {
          * 求最小值
          * MinBuilder min= AggregationBuilders.min("min_price").field("price");
          *
+         *
          */
         TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(aggregationTermsName).field(IntegralFields.LAW_ID)
                 //告诉引擎我需要按名称为 aggregationOfCountMatch 的方案排序， subAggregation 介绍了aggregationOfCountMatch的排序是如何定义的
                 //.order(BucketOrder.aggregation(aggregationOfCountMatch, sortType))
-                .order(BucketOrder.compound( // in order of priority:
-                        BucketOrder.aggregation(aggregationOfCountMatch, false), // sort by sub-aggregation first
-                        BucketOrder.aggregation("publish_sort", false))
+                .order(BucketOrder.compound(
+                        /**
+                         * in order of priority:
+                         * sort by sub-aggregation first
+                         * 比如查询"刑事 诉讼"，注意带上状态，这样不会引发失效的诉讼匹配记录多于"刑事"，而排到前面
+                         */
+                        BucketOrder.aggregation(aggregationOfCountMatch, false),
+                        BucketOrder.aggregation("publish_sort", false)
+                        )
                 )
                 .subAggregation(
                         //AggregationBuilders.count(aggregationOfCountMatch).field(IntegralFields.LAW_NAME + ".keyword")
-                        AggregationBuilders.count(aggregationOfCountMatch).field(sortField)
+                        AggregationBuilders.count(aggregationOfCountMatch).field(IntegralFields.LAW_NAME + ".keyword")
                         //不能按发布时间排序AggregationBuilders.max(aggregationOfCountMatch).field(sortField)
                 ).subAggregation(
                         AggregationBuilders.max("publish_sort").field(IntegralFields.PUBLISH)

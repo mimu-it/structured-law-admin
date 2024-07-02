@@ -59,6 +59,8 @@ public class IncrementalUpdateSrv {
 
     /**
      * 合并增量数据入库
+     *
+     * 除了更改状态，不会改变原法律数据
      * @param lawList
      */
     @Transactional(rollbackFor = Exception.class)
@@ -68,6 +70,9 @@ public class IncrementalUpdateSrv {
             long incrementalId = law.getId();
             String lawName = law.getName();
 
+            /**
+             * 根据固定特征获取原库中获取法律信息
+             */
             SlLaw condition = new SlLaw();
             condition.setPublish(law.getPublish());
             condition.setName(lawName);
@@ -81,6 +86,9 @@ public class IncrementalUpdateSrv {
                     SlLaw.STATUS
             });
 
+            /**
+             * 如果原库不存在这条法律，就新增
+             */
             if(existingLawList.isEmpty()) {
                 // 全部新增
                 long newId = this.insertLaw(law);
@@ -93,6 +101,9 @@ public class IncrementalUpdateSrv {
                 throw new IllegalStateException("存在多部相同的法律");
             }
 
+            /**
+             * 判断状态
+             */
             SlLaw existingLaw = existingLawList.get(0);
             if(status.equals(existingLaw.getStatus())) {
                 /** 如果状态也一样，就忽略 */
@@ -101,6 +112,9 @@ public class IncrementalUpdateSrv {
                 continue;
             }
 
+            /**
+             * 更新状态
+             */
             SlLaw conditionUpdate = new SlLaw();
             conditionUpdate.setStatus(status);
             conditionUpdate.setId(existingLaw.getId());

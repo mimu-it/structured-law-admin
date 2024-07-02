@@ -13,6 +13,8 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,7 +120,7 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
         String lawName = integralParams.getLawName();
         if (StrUtil.isNotBlank(lawName)) {
             /** 对于输入"婚姻 罪"，这样的词语应该进行分词，不适用于 matchPhraseQuery*/
-            shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
+            shouldQuery.must(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, lawName));
         }
 
         List<String> bestFields = new ArrayList<>();
@@ -132,7 +134,6 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
 
         bestFields.add(IntegralFields.TERM_TEXT);
 
-
         /** 分词查询 termText */
         String termText = integralParams.getTermText();
         if (StrUtil.isNotBlank(termText)) {
@@ -144,28 +145,29 @@ public class EsLawProvisionSrv extends AbstractEsSrv {
                 /** 拆分输入，遇到空格拆分多个关键字用于匹配 */
                 String[] preciseKeywords = termTextPured.split("\\s+");
 
+                shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, termTextPured)).boost(10f);
+
                 for(String preciseKeyword : preciseKeywords) {
-                    /** 正文可能很长，所以使用纯分词 */
+                    //正文可能很长，所以使用纯分词
                     shouldQuery.should(QueryBuilders.multiMatchQuery(preciseKeyword, bestFields.toArray(new String[0]))
-                            /**
-                             * 设置法律名权重更高，注意需要配合搜索降序排
-                             * searchSourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC)); // 根据得分降序排序
-                             */
-                            .field(StrUtil.toUnderlineCase(IntegralFields.LAW_NAME), 3f)
+                            //设置法律名权重更高，注意需要配合搜索降序排
+                            //searchSourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC)); // 根据得分降序排序
+                            .field(StrUtil.toUnderlineCase(IntegralFields.LAW_NAME), 1.2f)
                             .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
                 }
             }
             else {
                 /** 拆分输入，遇到空格拆分多个关键字用于匹配 */
                 String[] preciseKeywords = termText.split("\\s+");
+
+                shouldQuery.should(QueryBuilders.matchPhraseQuery(IntegralFields.LAW_NAME, termText)).boost(10f);
+
                 for(String preciseKeyword : preciseKeywords) {
-                    /** 正文可能很长，所以使用纯分词 */
+                    //正文可能很长，所以使用纯分词
                     shouldQuery.should(QueryBuilders.multiMatchQuery(preciseKeyword, bestFields.toArray(new String[0]))
-                            /**
-                             * 设置法律名权重更高，注意需要配合搜索降序排
-                             * searchSourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC)); // 根据得分降序排序
-                             */
-                            .field(StrUtil.toUnderlineCase(IntegralFields.LAW_NAME), 3f)
+                            //设置法律名权重更高，注意需要配合搜索降序排
+                            //searchSourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC)); // 根据得分降序排序
+                            .field(StrUtil.toUnderlineCase(IntegralFields.LAW_NAME), 1.2f)
                             .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
                 }
             }
