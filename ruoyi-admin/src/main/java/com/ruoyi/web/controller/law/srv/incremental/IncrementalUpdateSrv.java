@@ -63,7 +63,7 @@ public class IncrementalUpdateSrv {
      * 除了更改状态，不会改变原法律数据
      * @param lawList
      */
-    @Transactional(rollbackFor = Exception.class)
+    //@Transactional(rollbackFor = Exception.class)  开启事务 会导致切换从库失败
     public void merge(List<SlLaw> lawList) {
         ImportTrace.prepare();
         for(SlLaw law : lawList) {
